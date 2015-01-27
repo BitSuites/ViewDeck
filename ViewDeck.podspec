@@ -1,10 +1,10 @@
 Pod::Spec.new do |s|
-  s.name      = 'ViewDeck'
-  s.version   = '2.3.1'
+  s.name      = 'BPViewDeck'
+  s.version   = "0.0.1"
   s.platform  = :ios
   s.summary   = 'An implementation of the sliding functionality found in the ' \
                 'Path 2.0 or Facebook iOS apps.'
-  s.homepage  = 'https://github.com/Inferis/ViewDeck'
+  s.homepage  = 'https://github.com/BitSuites/ViewDeck'
   s.license   = {
     :type => 'MIT',
     :text => <<-LICENSE
@@ -18,8 +18,7 @@ Pod::Spec.new do |s|
     LICENSE
   }
   s.author    = { 'Tom Adriaenssen' =>  'http://inferis.org/' }             
-  s.source    = { :git => 'https://github.com/Inferis/ViewDeck.git',
-                  :tag => '2.3.1'}
+  s.source    = { :git => 'https://github.com/BitSuites/ViewDeck.git'}
   s.source_files  = 'ViewDeck/*.{h,m}'
   s.frameworks    = 'QuartzCore'
   s.requires_arc  = true

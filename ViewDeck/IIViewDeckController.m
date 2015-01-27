@@ -319,6 +319,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     _openSlideAnimationDuration = 0.3;
     _closeSlideAnimationDuration = 0.3;
     _offsetOrientation = IIViewDeckHorizontalOrientation;
+    _zoomScale = 1.0;
 
     _disabledPanClasses = [NSMutableSet setWithObjects:[UISlider class], NSClassFromString(@"UITableViewCellReorderControl"), nil];
     II_RETAIN(_disabledPanClasses);
@@ -610,6 +611,8 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
     if (beforeOffset != _offset)
         [self notifyDidChangeOffset:_offset orientation:orientation panning:panning];
+    
+    [self setZoomScaleSide:0];
 }
 
 - (void)hideAppropriateSideViews {
@@ -1420,9 +1423,11 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 }
 
 - (BOOL)openSideView:(IIViewDeckSide)side animated:(BOOL)animated duration:(NSTimeInterval)duration completion:(IIViewDeckControllerBlock)completed {
+    [self setZoomScaleSide:side];
     // if there's no controller or we're already open, just run the completion and say we're done.
     if (![self controllerForSide:side] || [self isSideOpen:side]) {
         if (completed) completed(self, YES);
+        [self setZoomScaleSide:side];
         return YES;
     }
     
@@ -1433,7 +1438,12 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     };
     
     if (![self isSideClosed:[self oppositeOfSide:side]]) {
-        return [self toggleOpenViewAnimated:animated completion:completed];
+        if ([self toggleOpenViewAnimated:animated completion:completed]) {
+            [self setZoomScaleSide:side];
+            return YES;
+        } else {
+            return NO;
+        }
     }
     
     if (duration == DEFAULT_DURATION) duration = [self openSlideDuration:animated];
@@ -1463,12 +1473,18 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     
     if ([self isSideClosed:side]) {
         // try to close any open view first
-        return [self closeOpenViewAnimated:animated completion:finish];
-    }
-    else {
+        if ([self closeOpenViewAnimated:animated completion:finish]){
+            [self setZoomScaleSide:side];
+            return YES;
+        } else {
+            return NO;
+        }
+    } else {
         options |= UIViewAnimationOptionCurveEaseOut;
 
         finish(self, YES);
+        
+        [self setZoomScaleSide:side];
         return YES;
     }
 }
@@ -1541,6 +1557,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (BOOL)closeSideView:(IIViewDeckSide)side animated:(BOOL)animated duration:(NSTimeInterval)duration completion:(IIViewDeckControllerBlock)completed {
     if ([self isSideClosed:side]) {
         if (completed) completed(self, YES);
+        [self setZoomScaleSide:side];
         return YES;
     }
     
@@ -1568,6 +1585,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, nil);
     }];
     
+    [self setZoomScaleSide:side];
     return YES;
 }
 
@@ -2439,6 +2457,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 }
 
 - (void)panned:(UIPanGestureRecognizer*)panner orientation:(IIViewDeckOffsetOrientation)orientation {
+    [self setZoomScaleSide:0];
     [self setParallax];
     
     CGFloat pv, m;
@@ -2684,6 +2703,66 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         }
     }
     return NO;
+}
+
+- (void)setZoomScaleSide:(IIViewDeckSide)side {
+    if (_zoomScale >=1.0)
+        return;
+    CGFloat scaleLedge = 0.0;
+    CGFloat diff = self.slidingControllerView.frame.origin.x;
+    BOOL leftSide = YES;
+    if (diff == 0) {
+        CGPoint centerAnchor = self.centerController.view.layer.anchorPoint;
+        if (side == IIViewDeckLeftSide) {
+            centerAnchor = CGPointMake(0.0, 0.5);
+        } else if (side == IIViewDeckRightSide) {
+            centerAnchor = CGPointMake(1.0, 0.5);
+        } else if (centerAnchor.x != 1.0)
+            centerAnchor = CGPointMake(0.0, 0.5);
+        [self setAnchorPoint:centerAnchor forView:self.centerController.view];
+        self.centerController.view.transform = CGAffineTransformMakeScale(1.0, 1.0);
+        CGPoint centerPosition = self.centerController.view.layer.position;
+        if (centerAnchor.x == 1.0)
+            centerPosition.x = self.centerController.view.frame.size.width;
+        else
+            centerPosition.x = 0.0;
+        self.centerController.view.layer.position = centerPosition;
+    } else if (diff < 0) {
+        leftSide = NO;
+        diff = diff * -1;
+        scaleLedge = self.rightSize;
+        [self setAnchorPoint:CGPointMake(1.0, 0.5) forView:self.centerController.view];
+    } else{
+        scaleLedge = self.leftSize;
+        [self setAnchorPoint:CGPointMake(0.0, 0.5) forView:self.centerController.view];
+    }
+    CGFloat scaleWidth = self.slidingControllerView.frame.size.width - scaleLedge;
+    CGFloat newDiff = (1 - _zoomScale) - ((diff / scaleWidth) * (1 - _zoomScale));
+    
+    
+    CGFloat startOffset = 0.6;
+    CGFloat adjustedDiff =(diff / scaleWidth);
+    adjustedDiff = (((adjustedDiff - startOffset) > (1.0)) ? (1.0) : (((adjustedDiff - startOffset) < (0.0)) ? (0.0) : (adjustedDiff - startOffset)));
+    // Adjust the percentage so the start point and end point represent the full percentage range from 0-100
+    adjustedDiff = adjustedDiff / (1.0 - startOffset);
+    
+    CGFloat sideScale = 0.7;
+    CGFloat sideDiff = (adjustedDiff * (1 - sideScale));
+    
+    CGFloat alphaScale = 0.0;
+    CGFloat alphaDiff = (adjustedDiff * (1 - alphaScale));
+    
+    if (leftSide && [self.leftController isKindOfClass:[IIWrapController class]]){
+        [(IIWrapController *)self.leftController wrappedController].view.transform = CGAffineTransformMakeScale(sideScale + sideDiff, sideScale + sideDiff);
+        [(IIWrapController *)self.leftController wrappedController].view.alpha = (alphaScale + alphaDiff);
+    } else if (!leftSide && [self.rightController isKindOfClass:[IIWrapController class]]){
+        [(IIWrapController *)self.rightController wrappedController].view.transform = CGAffineTransformMakeScale(sideScale + sideDiff, sideScale + sideDiff);
+        [(IIWrapController *)self.rightController wrappedController].view.alpha = (alphaScale + alphaDiff);
+    }
+    if (diff != 0) {
+        self.centerController.view.transform = CGAffineTransformMakeScale(_zoomScale + newDiff, _zoomScale + newDiff);
+    }
+    [self updateStatusBar];
 }
 
 
@@ -2975,6 +3054,11 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     [self setController:topController forSide:IIViewDeckTopSide];
 }
 
+- (void)setZoomScale:(CGFloat)zoomScale{
+    _zoomScale = zoomScale;
+    [self setShadowEnabled:(_zoomScale == 1.0)];
+}
+
 - (UIViewController *)bottomController {
     return [self controllerForSide:IIViewDeckBottomSide];
 }
@@ -2986,6 +3070,8 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (void)setCenterController:(UIViewController *)centerController {
     if (_centerController == centerController) return;
+    [self closeLeftViewAnimated:NO];
+    [self.centerController.view setFrame:self.referenceBounds];
     
     void(^beforeBlock)(UIViewController* controller) = ^(UIViewController* controller){};
     void(^afterBlock)(UIViewController* controller) = ^(UIViewController* controller){};
@@ -3082,6 +3168,8 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
             [self centerViewHidden];
         }
     }
+    [self setZoomScaleSide:0];
+    [self openLeftViewAnimated:NO];
 }
 
 - (void)setAutomaticallyUpdateTabBarItems:(BOOL)automaticallyUpdateTabBarItems {
@@ -3132,6 +3220,25 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     else {
         return self.centerView;
     }
+}
+
+-(void)setAnchorPoint:(CGPoint)anchorPoint forView:(UIView *)view {
+    CGPoint newPoint = CGPointMake(view.bounds.size.width * anchorPoint.x, view.bounds.size.height * anchorPoint.y);
+    CGPoint oldPoint = CGPointMake(view.bounds.size.width * view.layer.anchorPoint.x, view.bounds.size.height * view.layer.anchorPoint.y);
+    
+    newPoint = CGPointApplyAffineTransform(newPoint, view.transform);
+    oldPoint = CGPointApplyAffineTransform(oldPoint, view.transform);
+    
+    CGPoint position = view.layer.position;
+    
+    position.x -= oldPoint.x;
+    position.x += newPoint.x;
+    
+    position.y -= oldPoint.y;
+    position.y += newPoint.y;
+    
+    view.layer.position = position;
+    view.layer.anchorPoint = anchorPoint;
 }
 
 #pragma mark - observation
@@ -3427,6 +3534,41 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     
     return NO;
 }
+
+#pragma mark - Status bar
+
+- (void)updateStatusBar{
+    if ([self respondsToSelector:@selector(setNeedsStatusBarAppearanceUpdate)]) {
+        [UIView animateWithDuration:0.3 animations:^{
+            [self performSelector:@selector(setNeedsStatusBarAppearanceUpdate)];
+        }];
+    }
+}
+
+- (UIStatusBarStyle)preferredStatusBarStyle{
+    id controller = nil;
+    if (![self isSideClosed:IIViewDeckLeftSide]){
+        controller = self.leftController;
+    } else if (![self isSideClosed:IIViewDeckRightSide]) {
+        controller = self.rightController;
+    } else if (![self isSideClosed:IIViewDeckBottomSide]) {
+        controller = self.bottomController;
+    } else if (![self isSideClosed:IIViewDeckTopSide]) {
+        controller = self.topController;
+    } else {
+        controller = self.centerController;
+    }
+    
+    if ([controller isKindOfClass:[IIWrapController class]]){
+        controller = [(IIWrapController *)controller wrappedController];
+    }
+    if ([controller isKindOfClass:[UINavigationController class]]){
+        controller = [(UINavigationController *)controller topViewController];
+    }
+    
+    return [controller preferredStatusBarStyle];
+}
+
 @end
 
 #pragma mark -
