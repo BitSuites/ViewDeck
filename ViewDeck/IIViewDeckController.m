@@ -489,9 +489,12 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 }
 
 - (CGRect)referenceBounds {
-    return self.referenceView
-    ? self.referenceView.bounds
-    : [[UIScreen mainScreen] bounds];
+    if ((NSFoundationVersionNumber <= NSFoundationVersionNumber_iOS_7_1) && UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].statusBarOrientation)){
+        CGRect currentBounds = [[UIScreen mainScreen] bounds];
+        return CGRectMake(0, 0, currentBounds.size.height, currentBounds.size.width);
+    } else {
+        return self.referenceView ? self.referenceView.bounds : [[UIScreen mainScreen] bounds];
+    }
 }
 
 - (CGFloat)relativeStatusBarHeight {
@@ -502,6 +505,9 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 }
 
 - (CGFloat)statusBarHeight {
+    if ((NSFoundationVersionNumber > NSFoundationVersionNumber_iOS_7_1)){
+        return [UIApplication sharedApplication].statusBarFrame.size.height;
+    }
     return UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].statusBarOrientation)
     ? [UIApplication sharedApplication].statusBarFrame.size.width
     : [UIApplication sharedApplication].statusBarFrame.size.height;
