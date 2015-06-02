@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name      = 'BPViewDeck'
   s.version   = "0.0.1"
-  s.platform  = :ios
+  s.platform  = :ios, '7.0'
   s.summary   = 'An implementation of the sliding functionality found in the ' \
                 'Path 2.0 or Facebook iOS apps.'
   s.homepage  = 'https://github.com/BitSuites/ViewDeck'
