@@ -1064,6 +1064,35 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     [self applyShadowToSlidingViewAnimated:YES];
 }
 
+- (void)willTransitionToTraitCollection:(UITraitCollection *)newCollection withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+    [super willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
+    _rotating = YES;
+    if (_preRotationSize.width == 0) {
+        _preRotationSize = self.referenceBounds.size;
+        _preRotationCenterSize = self.centerView.bounds.size;
+    }
+    _preRotationReopenSide = 0;
+    if (_zoomScale < 1.0 && [self isAnySideOpen]){
+        _preRotationReopenSide = [self openSide];
+        [self closeSideView:_preRotationReopenSide animated:NO completion:nil];
+    }
+    
+    [self relayRotationMethod:^(UIViewController *controller) {
+        [controller willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
+    }];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    _rotating = NO;
+    [self relayRotationMethod:^(UIViewController *controller) {
+        [controller traitCollectionDidChange:previousTraitCollection];
+    }];
+    if (_preRotationReopenSide != 0){
+        [self openSideView:_preRotationReopenSide animated:NO completion:nil];
+    }
+    [self setAccessibilityForCenterTapper]; // update since the frame and the frame's intersection with the window will have changed
+}
 
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
     [super willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
