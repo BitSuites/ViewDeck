@@ -83,8 +83,7 @@
     : [UIApplication sharedApplication].statusBarFrame.size.height;
 }
 
-- (void)loadView
-{
+- (void)loadView {
     self.view = II_AUTORELEASE([[UIView alloc] initWithFrame:II_CGRectOffsetTopAndShrink(_wrappedController.view.frame, [self statusBarHeight])]);
     self.view.autoresizingMask = _wrappedController.view.autoresizingMask;
     _wrappedController.view.frame = self.view.bounds;
@@ -106,8 +105,7 @@
         self.onViewDidLoad(self);
 }
 
-- (void)viewDidUnload
-{
+- (void)viewDidUnload {
     [super viewDidUnload];
     [self.wrappedController.view removeFromSuperview];
 }
@@ -145,8 +143,7 @@
     [_wrappedController setHidesBottomBarWhenPushed:hidesBottomBarWhenPushed];
 }
 
-- (void)viewWillAppear:(BOOL)animated
-{
+- (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     if (self.onViewWillAppear)
         self.onViewWillAppear(self, animated);
@@ -154,8 +151,7 @@
     [self.wrappedController viewWillAppear:animated];
 }
 
-- (void)viewDidAppear:(BOOL)animated
-{
+- (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     if (self.onViewDidAppear)
         self.onViewDidAppear(self, animated);
@@ -163,8 +159,7 @@
     [_wrappedController viewDidAppear:animated];
 }
 
-- (void)viewWillDisappear:(BOOL)animated
-{
+- (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     if (self.onViewWillDisappear)
         self.onViewWillDisappear(self, animated);
@@ -172,8 +167,7 @@
     [_wrappedController viewWillDisappear:animated];
 }
 
-- (void)viewDidDisappear:(BOOL)animated
-{
+- (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
     if (self.onViewDidDisappear)
         self.onViewDidDisappear(self, animated);
@@ -201,8 +195,7 @@
     return NO;
 }
 
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
-{
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
     return [self.wrappedController shouldAutorotateToInterfaceOrientation:interfaceOrientation];
 }
 

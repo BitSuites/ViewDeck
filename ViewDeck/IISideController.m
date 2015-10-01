@@ -37,7 +37,7 @@
 
 @end
 
-@implementation IISideController 
+@implementation IISideController
 
 + (IISideController*)autoConstrainedSideControllerWithViewController:(UIViewController*)controller {
     return [[IISideController alloc] initWithViewController:controller];
@@ -68,7 +68,7 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-
+    
     self.view.backgroundColor = self.wrappedController.view.backgroundColor;
     [self shrinkSideAnimated:animated];
 }
@@ -99,24 +99,20 @@
             [UIView beginAnimations:@"shrinkSide" context:nil];
             [UIView setAnimationDuration:0.3];
             [UIView setAnimationCurve:UIViewAnimationCurveEaseInOut];
-        }
-        else {
+        } else {
             [CATransaction disableActions];
         }
         
         if (self.viewDeckController.leftController == self) {
             CGFloat offset = self.view.bounds.size.width - (_constrainedSize > 0 ? _constrainedSize : self.viewDeckController.leftViewSize);
             self.wrappedController.view.frame = II_CGRectOffsetRightAndShrink(self.view.bounds, offset);
-        }
-        else if (self.viewDeckController.rightController == self) {
+        } else if (self.viewDeckController.rightController == self) {
             CGFloat offset = self.view.bounds.size.width - (_constrainedSize > 0 ? _constrainedSize : self.viewDeckController.rightViewSize);
             self.wrappedController.view.frame = II_CGRectOffsetLeftAndShrink(self.view.bounds, offset);
-        }
-        else if (self.viewDeckController.topController == self) {
+        } else if (self.viewDeckController.topController == self) {
             CGFloat offset = self.view.bounds.size.height - (_constrainedSize > 0 ? _constrainedSize : self.viewDeckController.topViewSize);
             self.wrappedController.view.frame = II_CGRectOffsetBottomAndShrink(self.view.bounds, offset);
-        }
-        else if (self.viewDeckController.bottomController == self) {
+        } else if (self.viewDeckController.bottomController == self) {
             CGFloat offset = self.view.bounds.size.height - (_constrainedSize > 0 ? _constrainedSize : self.viewDeckController.bottomViewSize);
             self.wrappedController.view.frame = II_CGRectOffsetTopAndShrink(self.view.bounds, offset);
         }
