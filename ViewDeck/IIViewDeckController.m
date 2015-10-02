@@ -23,53 +23,15 @@
 //  SOFTWARE.
 //
 
-// define some LLVM3 macros if the code is compiled with a different compiler (ie LLVMGCC42)
-#ifndef __has_feature
-#define __has_feature(x) 0
-#endif
-#ifndef __has_extension
-#define __has_extension __has_feature // Compatibility with pre-3.0 compilers.
-#endif
-
-#if __has_feature(objc_arc) && __clang_major__ >= 3
-#define II_ARC_ENABLED 1
-#endif // __has_feature(objc_arc)
-
-#if II_ARC_ENABLED
-#define II_RETAIN(xx)  ((void)(0))
-#define II_RELEASE(xx)  ((void)(0))
-#define II_AUTORELEASE(xx)  (xx)
-#else
-#define II_RETAIN(xx)           [xx retain]
-#define II_RELEASE(xx)          [xx release]
-#define II_AUTORELEASE(xx)      [xx autorelease]
-#endif
-
 #define II_FLOAT_EQUAL(x, y) (((x) - (y)) == 0.0f)
 #define II_STRING_EQUAL(a, b) ((a == nil && b == nil) || (a != nil && [a isEqualToString:b]))
 
-#define II_CGRectOffsetRightAndShrink(rect, offset)         \
-({                                                        \
-__typeof__(rect) __r = (rect);                          \
-__typeof__(offset) __o = (offset);                      \
-(CGRect) {  { __r.origin.x, __r.origin.y },            \
-{ __r.size.width - __o, __r.size.height }  \
-};                                            \
-})
 #define II_CGRectOffsetTopAndShrink(rect, offset)           \
 ({                                                        \
 __typeof__(rect) __r = (rect);                          \
 __typeof__(offset) __o = (offset);                      \
 (CGRect) { { __r.origin.x,   __r.origin.y    + __o },   \
 { __r.size.width, __r.size.height - __o }    \
-};                                             \
-})
-#define II_CGRectOffsetBottomAndShrink(rect, offset)        \
-({                                                        \
-__typeof__(rect) __r = (rect);                          \
-__typeof__(offset) __o = (offset);                      \
-(CGRect) { { __r.origin.x, __r.origin.y },              \
-{ __r.size.width, __r.size.height - __o}     \
 };                                             \
 })
 #define II_CGRectShrink(rect, w, h)                             \
@@ -83,8 +45,6 @@ __typeof__(h) __h = (h);                                    \
 })
 
 #import "IIViewDeckController.h"
-#import <objc/runtime.h>
-#import <QuartzCore/QuartzCore.h>
 #import <objc/message.h>
 #import "IIWrapController.h"
 
@@ -106,32 +66,11 @@ inline NSString* NSStringFromIIViewDeckSide(IIViewDeckSide side) {
         case IIViewDeckRightSide:
             return @"right";
             
-        case IIViewDeckTopSide:
-            return @"top";
-            
-        case IIViewDeckBottomSide:
-            return @"bottom";
-            
         case IIViewDeckNoSide:
             return @"no";
             
         default:
             return @"unknown";
-    }
-}
-
-inline IIViewDeckOffsetOrientation IIViewDeckOffsetOrientationFromIIViewDeckSide(IIViewDeckSide side) {
-    switch (side) {
-        case IIViewDeckLeftSide:
-        case IIViewDeckRightSide:
-            return IIViewDeckHorizontalOrientation;
-            
-        case IIViewDeckTopSide:
-        case IIViewDeckBottomSide:
-            return IIViewDeckVerticalOrientation;
-            
-        default:
-            return IIViewDeckNoOrientation;
     }
 }
 
@@ -187,12 +126,12 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)cleanup;
 - (uint)sideControllerCount;
 
-- (CGRect)slidingRectForOffset:(CGFloat)offset forOrientation:(IIViewDeckOffsetOrientation)orientation;
-- (CGSize)slidingSizeForOffset:(CGFloat)offset forOrientation:(IIViewDeckOffsetOrientation)orientation;
-- (void)setSlidingFrameForOffset:(CGFloat)frame forOrientation:(IIViewDeckOffsetOrientation)orientation animated:(BOOL)animated;
-- (void)setSlidingFrameForOffset:(CGFloat)offset limit:(BOOL)limit forOrientation:(IIViewDeckOffsetOrientation)orientation animated:(BOOL)animated;
-- (void)setSlidingFrameForOffset:(CGFloat)offset limit:(BOOL)limit panning:(BOOL)panning forOrientation:(IIViewDeckOffsetOrientation)orientation animated:(BOOL)animated;
-- (void)panToSlidingFrameForOffset:(CGFloat)frame forOrientation:(IIViewDeckOffsetOrientation)orientation animated:(BOOL)animated;
+- (CGRect)slidingRectForOffset:(CGFloat)offset;
+- (CGSize)slidingSizeForOffset:(CGFloat)offset;
+- (void)setSlidingFrameForOffset:(CGFloat)frame animated:(BOOL)animated;
+- (void)setSlidingFrameForOffset:(CGFloat)offset limit:(BOOL)limit animated:(BOOL)animated;
+- (void)setSlidingFrameForOffset:(CGFloat)offset limit:(BOOL)limit panning:(BOOL)panning animated:(BOOL)animated;
+- (void)panToSlidingFrameForOffset:(CGFloat)frame animated:(BOOL)animated;
 - (void)hideAppropriateSideViews;
 
 - (BOOL)setSlidingAndReferenceViews;
@@ -200,8 +139,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)restoreShadowToSlidingView;
 - (void)arrangeViewsAfterRotation;
 - (CGFloat)relativeStatusBarHeight;
-
-- (NSArray *)bouncingValuesForViewSide:(IIViewDeckSide)viewSide maximumBounce:(CGFloat)maxBounce numberOfBounces:(CGFloat)numberOfBounces dampingFactor:(CGFloat)zeta duration:(NSTimeInterval)duration;
 
 - (void)centerViewVisible;
 - (void)centerViewHidden;
@@ -219,13 +156,13 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)notifyDidOpenSide:(IIViewDeckSide)viewDeckSide animated:(BOOL)animated;
 - (void)notifyWillCloseSide:(IIViewDeckSide)viewDeckSide animated:(BOOL)animated;
 - (void)notifyDidCloseSide:(IIViewDeckSide)viewDeckSide animated:(BOOL)animated;
-- (void)notifyDidChangeOffset:(CGFloat)offset orientation:(IIViewDeckOffsetOrientation)orientation panning:(BOOL)panning;
+- (void)notifyDidChangeOffset:(CGFloat)offset panning:(BOOL)panning;
 
 - (BOOL)checkDelegate:(SEL)selector side:(IIViewDeckSide)viewDeckSize;
 - (BOOL)checkDelegate:(SEL)selector view:(UIView*)view;
 - (void)performDelegate:(SEL)selector side:(IIViewDeckSide)viewDeckSize animated:(BOOL)animated;
 - (void)performDelegate:(SEL)selector side:(IIViewDeckSide)viewDeckSize controller:(UIViewController*)controller;
-- (void)performDelegate:(SEL)selector offset:(CGFloat)offset orientation:(IIViewDeckOffsetOrientation)orientation panning:(BOOL)panning;
+- (void)performDelegate:(SEL)selector offset:(CGFloat)offset panning:(BOOL)panning;
 
 - (void)relayRotationMethod:(void(^)(UIViewController* controller))relay;
 
@@ -265,8 +202,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 @synthesize centerController = _centerController;
 @dynamic leftController;
 @dynamic rightController;
-@dynamic topController;
-@dynamic bottomController;
 @synthesize shadowEnabled = _shadowEnabled;
 @synthesize resizesCenterView = _resizesCenterView;
 @synthesize originalShadowOpacity = _originalShadowOpacity;
@@ -318,12 +253,10 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     _bounceDurationFactor = 0.3;
     _openSlideAnimationDuration = 0.3;
     _closeSlideAnimationDuration = 0.3;
-    _offsetOrientation = IIViewDeckHorizontalOrientation;
     _zoomScale = 1.0;
     _rotating = NO;
     
     _disabledPanClasses = [NSMutableSet setWithObjects:[UISlider class], NSClassFromString(@"UITableViewCellReorderControl"), nil];
-    II_RETAIN(_disabledPanClasses);
     
     _delegate = nil;
     _delegateMode = IIViewDeckDelegateOnly;
@@ -338,8 +271,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     self.centerController = centerController;
     self.leftController = nil;
     self.rightController = nil;
-    self.topController = nil;
-    self.bottomController = nil;
     
     _shadowEnabled = YES;
     _shadowLayer = [CALayer new];
@@ -349,7 +280,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     _shadowLayer.shadowColor = [[UIColor blackColor] CGColor];
     _shadowLayer.shadowOffset = CGSizeZero;
     
-    _ledge[IIViewDeckLeftSide] = _ledge[IIViewDeckRightSide] = _ledge[IIViewDeckTopSide] = _ledge[IIViewDeckBottomSide] = 44;
+    _ledge[IIViewDeckLeftSide] = _ledge[IIViewDeckRightSide] = 44;
 }
 
 - (id)initWithCoder:(NSCoder *)aDecoder {
@@ -395,38 +326,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     return self;
 }
 
-- (id)initWithCenterViewController:(UIViewController*)centerController topViewController:(UIViewController*)topController {
-    if ((self = [self initWithCenterViewController:centerController])) {
-        self.topController = topController;
-    }
-    return self;
-}
-
-- (id)initWithCenterViewController:(UIViewController*)centerController bottomViewController:(UIViewController*)bottomController {
-    if ((self = [self initWithCenterViewController:centerController])) {
-        self.bottomController = bottomController;
-    }
-    return self;
-}
-
-- (id)initWithCenterViewController:(UIViewController*)centerController topViewController:(UIViewController*)topController bottomViewController:(UIViewController*)bottomController {
-    if ((self = [self initWithCenterViewController:centerController])) {
-        self.topController = topController;
-        self.bottomController = bottomController;
-    }
-    return self;
-}
-
-- (id)initWithCenterViewController:(UIViewController*)centerController leftViewController:(UIViewController*)leftController rightViewController:(UIViewController*)rightController topViewController:(UIViewController*)topController bottomViewController:(UIViewController*)bottomController {
-    if ((self = [self initWithCenterViewController:centerController])) {
-        self.leftController = leftController;
-        self.rightController = rightController;
-        self.topController = topController;
-        self.bottomController = bottomController;
-    }
-    return self;
-}
-
 - (void)cleanup {
     self.originalShadowRadius = 0;
     self.originalShadowOpacity = 0;
@@ -450,10 +349,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     self.rightController.viewDeckController = nil;
     self.rightController = nil;
     self.panners = nil;
-    
-#if !II_ARC_ENABLED
-    [super dealloc];
-#endif
 }
 
 #pragma mark - Memory management
@@ -469,7 +364,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 #pragma mark - Bookkeeping
 
 - (uint)sideControllerCount {
-    return (self.leftController ? 1 : 0) + (self.rightController ? 1 : 0) + (self.topController ? 1 : 0) + (self.bottomController ? 1 : 0);
+    return (self.leftController ? 1 : 0) + (self.rightController ? 1 : 0);
 }
 
 - (NSArray*)controllers {
@@ -477,8 +372,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     if (self.centerController) [result addObject:self.centerController];
     if (self.leftController) [result addObject:self.leftController];
     if (self.rightController) [result addObject:self.rightController];
-    if (self.topController) [result addObject:self.topController];
-    if (self.bottomController) [result addObject:self.bottomController];
     return [NSArray arrayWithArray:result];
 }
 
@@ -521,75 +414,51 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     return II_CGRectOffsetTopAndShrink(self.referenceBounds, [self relativeStatusBarHeight]);
 }
 
-- (CGFloat)limitOffset:(CGFloat)offset forOrientation:(IIViewDeckOffsetOrientation)orientation {
-    if (orientation == IIViewDeckHorizontalOrientation) {
-        if (self.leftController && self.rightController) return offset;
-        
-        if (self.leftController && _maxLedge > 0) {
-            CGFloat left = self.referenceBounds.size.width - _maxLedge;
-            offset = MIN(offset, left);
-        } else if (self.rightController && _maxLedge > 0) {
-            CGFloat right = _maxLedge - self.referenceBounds.size.width;
-            offset = MAX(offset, right);
-        }
-        
-        return offset;
-    } else {
-        if (self.topController && self.bottomController) return offset;
-        
-        if (self.topController && _maxLedge > 0) {
-            CGFloat top = self.referenceBounds.size.height - _maxLedge;
-            offset = MIN(offset, top);
-        } else if (self.bottomController && _maxLedge > 0) {
-            CGFloat bottom = _maxLedge - self.referenceBounds.size.height;
-            offset = MAX(offset, bottom);
-        }
-        
-        return offset;
+- (CGFloat)limitOffset:(CGFloat)offset {
+    if (self.leftController && self.rightController) return offset;
+    
+    if (self.leftController && _maxLedge > 0) {
+        CGFloat left = self.referenceBounds.size.width - _maxLedge;
+        offset = MIN(offset, left);
+    } else if (self.rightController && _maxLedge > 0) {
+        CGFloat right = _maxLedge - self.referenceBounds.size.width;
+        offset = MAX(offset, right);
     }
     
+    return offset;
 }
 
-- (CGRect)slidingRectForOffset:(CGFloat)offset forOrientation:(IIViewDeckOffsetOrientation)orientation {
-    offset = [self limitOffset:offset forOrientation:orientation];
-    if (orientation == IIViewDeckHorizontalOrientation) {
-        return (CGRect) { {self.resizesCenterView && offset < 0 ? 0 : offset, 0}, [self slidingSizeForOffset:offset forOrientation:orientation] };
-    } else {
-        return (CGRect) { {0, self.resizesCenterView && offset < 0 ? 0 : offset}, [self slidingSizeForOffset:offset forOrientation:orientation] };
-    }
+- (CGRect)slidingRectForOffset:(CGFloat)offset {
+    offset = [self limitOffset:offset];
+    return (CGRect) { {self.resizesCenterView && offset < 0 ? 0 : offset, 0}, [self slidingSizeForOffset:offset] };
 }
 
-- (CGSize)slidingSizeForOffset:(CGFloat)offset forOrientation:(IIViewDeckOffsetOrientation)orientation {
+- (CGSize)slidingSizeForOffset:(CGFloat)offset {
     if (!self.resizesCenterView) return self.referenceBounds.size;
     
-    offset = [self limitOffset:offset forOrientation:orientation];
-    if (orientation == IIViewDeckHorizontalOrientation) {
-        return (CGSize) { self.centerViewBounds.size.width - ABS(offset), self.centerViewBounds.size.height };
-    } else {
-        return (CGSize) { self.centerViewBounds.size.width, self.centerViewBounds.size.height - ABS(offset) };
-    }
+    offset = [self limitOffset:offset];
+    return (CGSize) { self.centerViewBounds.size.width - ABS(offset), self.centerViewBounds.size.height };
 }
 
--(void)setSlidingFrameForOffset:(CGFloat)offset forOrientation:(IIViewDeckOffsetOrientation)orientation animated:(BOOL)animated {
-    [self setSlidingFrameForOffset:offset limit:YES panning:NO forOrientation:orientation animated:animated];
+-(void)setSlidingFrameForOffset:(CGFloat)offset animated:(BOOL)animated {
+    [self setSlidingFrameForOffset:offset limit:YES panning:NO animated:animated];
 }
 
--(void)panToSlidingFrameForOffset:(CGFloat)offset forOrientation:(IIViewDeckOffsetOrientation)orientation animated:(BOOL)animated {
-    [self setSlidingFrameForOffset:offset limit:YES panning:YES forOrientation:orientation animated:animated];
+-(void)panToSlidingFrameForOffset:(CGFloat)offset animated:(BOOL)animated {
+    [self setSlidingFrameForOffset:offset limit:YES panning:YES animated:animated];
 }
 
--(void)setSlidingFrameForOffset:(CGFloat)offset limit:(BOOL)limit forOrientation:(IIViewDeckOffsetOrientation)orientation animated:(BOOL)animated {
-    [self setSlidingFrameForOffset:offset limit:limit panning:NO forOrientation:orientation animated:animated];
+-(void)setSlidingFrameForOffset:(CGFloat)offset limit:(BOOL)limit animated:(BOOL)animated {
+    [self setSlidingFrameForOffset:offset limit:limit panning:NO animated:animated];
 }
 
--(void)setSlidingFrameForOffset:(CGFloat)offset limit:(BOOL)limit panning:(BOOL)panning forOrientation:(IIViewDeckOffsetOrientation)orientation animated:(BOOL)animated {
+-(void)setSlidingFrameForOffset:(CGFloat)offset limit:(BOOL)limit panning:(BOOL)panning animated:(BOOL)animated {
     CGFloat beforeOffset = _offset;
     if (limit)
-        offset = [self limitOffset:offset forOrientation:orientation];
+        offset = [self limitOffset:offset];
     _offset = offset;
-    _offsetOrientation = orientation;
     
-    self.slidingControllerView.frame = [self slidingRectForOffset:_offset forOrientation:orientation];
+    self.slidingControllerView.frame = [self slidingRectForOffset:_offset];
     
     CABasicAnimation* slidingAnim = (CABasicAnimation*)[self.slidingControllerView.layer animationForKey:@"position"];
     _shadowLayer.frame = self.slidingControllerView.layer.frame;
@@ -606,7 +475,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     [self setParallax];
     
     if (beforeOffset != _offset)
-        [self notifyDidChangeOffset:_offset orientation:orientation panning:panning];
+        [self notifyDidChangeOffset:_offset panning:panning];
     
     [self setZoomScaleSide:0];
 }
@@ -614,8 +483,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)hideAppropriateSideViews {
     [self hide:(CGRectGetMinX(self.slidingControllerView.frame) <= 0) controllerViewForSide:IIViewDeckLeftSide];
     [self hide:(CGRectGetMaxX(self.slidingControllerView.frame) >= self.referenceBounds.size.width) controllerViewForSide:IIViewDeckRightSide];
-    [self hide:(CGRectGetMinY(self.slidingControllerView.frame) <= 0) controllerViewForSide:IIViewDeckTopSide];
-    [self hide:(CGRectGetMaxY(self.slidingControllerView.frame) >= self.referenceBounds.size.height) controllerViewForSide:IIViewDeckBottomSide];
 }
 
 #pragma mark - ledges
@@ -640,32 +507,19 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
             break;
         }
             
-        case IIViewDeckTopSide: {
-            minLedge = MIN(self.referenceBounds.size.width, ledge);
-            offsetter = ^CGFloat(CGFloat l) { return  self.referenceBounds.size.height - l; };
-            break;
-        }
-            
-        case IIViewDeckBottomSide: {
-            minLedge = MIN(self.referenceBounds.size.width, ledge);
-            offsetter = ^CGFloat(CGFloat l) { return l - self.referenceBounds.size.height; };
-            break;
-        }
-            
         default:
             return;
     }
     
     ledge = MAX(ledge, minLedge);
     if (_viewFirstAppeared && II_FLOAT_EQUAL(self.slidingControllerView.frame.origin.x, offsetter(_ledge[side]))) {
-        IIViewDeckOffsetOrientation orientation = IIViewDeckOffsetOrientationFromIIViewDeckSide(side);
         if (ledge < _ledge[side]) {
             [UIView animateWithDuration:[self closeSlideDuration:YES] animations:^{
-                [self setSlidingFrameForOffset:offsetter(ledge) forOrientation:orientation animated:YES];
+                [self setSlidingFrameForOffset:offsetter(ledge) animated:YES];
             } completion:completion];
         } else if (ledge > _ledge[side]) {
             [UIView animateWithDuration:[self openSlideDuration:YES] animations:^{
-                [self setSlidingFrameForOffset:offsetter(ledge) forOrientation:orientation animated:YES];
+                [self setSlidingFrameForOffset:offsetter(ledge) animated:YES];
             } completion:completion];
         }
     }
@@ -721,53 +575,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     return [self ledgeAsSize:_ledge[IIViewDeckRightSide] mode:IIViewDeckLedgeSizeMode forSide:IIViewDeckRightSide];
 }
 
-
-#pragma mark top size
-
-- (void)setTopSize:(CGFloat)leftSize {
-    [self setTopSize:leftSize completion:nil];
-}
-
-- (void)setTopSize:(CGFloat)topSize completion:(void(^)(BOOL finished))completion {
-    [self setSize:topSize forSide:IIViewDeckTopSide completion:completion];
-}
-
-- (CGFloat)topSize {
-    return [self sizeForSide:IIViewDeckTopSide];
-}
-
-- (CGFloat)topViewSize {
-    return [self ledgeAsSize:_ledge[IIViewDeckTopSide] mode:IIViewDeckViewSizeMode forSide:IIViewDeckTopSide];
-}
-
-- (CGFloat)topLedgeSize {
-    return [self ledgeAsSize:_ledge[IIViewDeckTopSide] mode:IIViewDeckLedgeSizeMode forSide:IIViewDeckTopSide];
-}
-
-
-#pragma mark Bottom size
-
-- (void)setBottomSize:(CGFloat)bottomSize {
-    [self setBottomSize:bottomSize completion:nil];
-}
-
-- (void)setBottomSize:(CGFloat)bottomSize completion:(void(^)(BOOL finished))completion {
-    [self setSize:bottomSize forSide:IIViewDeckBottomSide completion:completion];
-}
-
-- (CGFloat)bottomSize {
-    return [self sizeForSide:IIViewDeckBottomSide];
-}
-
-- (CGFloat)bottomViewSize {
-    return [self ledgeAsSize:_ledge[IIViewDeckBottomSide] mode:IIViewDeckViewSizeMode forSide:IIViewDeckBottomSide];
-}
-
-- (CGFloat)bottomLedgeSize {
-    return [self ledgeAsSize:_ledge[IIViewDeckBottomSide] mode:IIViewDeckLedgeSizeMode forSide:IIViewDeckBottomSide];
-}
-
-
 #pragma mark max size
 
 - (void)setMaxSize:(CGFloat)maxSize {
@@ -787,7 +594,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
                 [self setSize:maxSize forSide:side completion:completion];
             else if (completion)
                 completion(NO);
-            [self setSlidingFrameForOffset:_offset forOrientation:IIViewDeckOffsetOrientationFromIIViewDeckSide(side) animated:YES]; // should be animated
+            [self setSlidingFrameForOffset:_offset animated:YES]; // should be animated
         }
     }];
 }
@@ -824,7 +631,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     _viewFirstAppeared = NO;
     _viewAppeared = 0;
     
-    self.view = II_AUTORELEASE([[IIViewDeckView alloc] init]);
+    self.view = [[IIViewDeckView alloc] init];
     if ([[self presentingViewController] isKindOfClass:[UINavigationController class]])
         [((IIViewDeckView*)self.view) setNeedsOffsetAdjustment];
     self.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -835,7 +642,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    self.centerView = II_AUTORELEASE([[UIView alloc] init]);
+    self.centerView = [[UIView alloc] init];
     self.centerView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.centerView.autoresizesSubviews = YES;
     self.centerView.clipsToBounds = YES;
@@ -908,7 +715,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
                 [self.referenceView insertSubview:controller.view belowSubview:self.slidingControllerView];
             }];
             
-            [self setSlidingFrameForOffset:_offset forOrientation:_offsetOrientation animated:YES];
+            [self setSlidingFrameForOffset:_offset animated:YES];
             self.slidingControllerView.hidden = NO;
             
             self.centerView.frame = self.centerViewBounds;
@@ -932,13 +739,13 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         // after 0.01 sec, since in certain cases the sliding view is reset.
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.001 * NSEC_PER_SEC), dispatch_get_main_queue(), ^(void){
             if (applyViews) applyViews();
-            [self setSlidingFrameForOffset:_offset forOrientation:_offsetOrientation animated:YES];
+            [self setSlidingFrameForOffset:_offset animated:YES];
             [self hideAppropriateSideViews];
         });
         
         [self setNeedsAddPanners];
         
-        if ([self isSideClosed:IIViewDeckLeftSide] && [self isSideClosed:IIViewDeckRightSide] && [self isSideClosed:IIViewDeckTopSide] && [self isSideClosed:IIViewDeckBottomSide])
+        if ([self isSideClosed:IIViewDeckLeftSide] && [self isSideClosed:IIViewDeckRightSide])
             [self centerViewVisible];
         else
             [self centerViewHidden];
@@ -1009,7 +816,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     return !self.centerController || [self.centerController shouldAutorotate];
 }
 
-- (NSUInteger)supportedInterfaceOrientations {
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
     if (self.centerController)
         return [self.centerController supportedInterfaceOrientations];
     
@@ -1048,34 +855,15 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     [self applyShadowToSlidingViewAnimated:YES];
 }
 
-- (void)willTransitionToTraitCollection:(UITraitCollection *)newCollection withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
-    [super willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
-    _rotating = YES;
-    if (_preRotationSize.width == 0) {
-        _preRotationSize = self.referenceBounds.size;
-        _preRotationCenterSize = self.centerView.bounds.size;
-    }
-    _preRotationReopenSide = 0;
-    if (_zoomScale < 1.0 && [self isAnySideOpen]){
-        _preRotationReopenSide = [self openSide];
-        [self closeSideView:_preRotationReopenSide animated:NO completion:nil];
-    }
-    
-    [self relayRotationMethod:^(UIViewController *controller) {
-        [controller willTransitionToTraitCollection:newCollection withTransitionCoordinator:coordinator];
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+    [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        
+    } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        [self arrangeViewsAfterRotation];
+        [self applyCenterViewCornerRadiusAnimated:NO];
+        [self applyShadowToSlidingViewAnimated:NO];
     }];
-}
-
-- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
-    [super traitCollectionDidChange:previousTraitCollection];
-    _rotating = NO;
-    [self relayRotationMethod:^(UIViewController *controller) {
-        [controller traitCollectionDidChange:previousTraitCollection];
-    }];
-    if (_preRotationReopenSide != 0){
-        [self openSideView:_preRotationReopenSide animated:NO completion:nil];
-    }
-    [self setAccessibilityForCenterTapper]; // update since the frame and the frame's intersection with the window will have changed
 }
 
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
@@ -1114,32 +902,17 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     
     CGFloat offset, max, preSize;
     IIViewDeckSide adjustOffset = IIViewDeckNoSide;
-    if (_offsetOrientation == IIViewDeckVerticalOrientation) {
-        offset = self.slidingControllerView.frame.origin.y;
-        max = self.referenceBounds.size.height;
-        preSize = _preRotationSize.height;
-        if (self.resizesCenterView && II_FLOAT_EQUAL(offset, 0)) {
-            offset = offset + (_preRotationCenterSize.height - _preRotationSize.height);
-        }
-        if (!II_FLOAT_EQUAL(offset, 0)) {
-            if (II_FLOAT_EQUAL(offset, preSize - _ledge[IIViewDeckTopSide]))
-                adjustOffset = IIViewDeckTopSide;
-            else if (II_FLOAT_EQUAL(offset, _ledge[IIViewDeckBottomSide] - preSize))
-                adjustOffset = IIViewDeckBottomSide;
-        }
-    } else {
-        offset = self.slidingControllerView.frame.origin.x;
-        max = self.referenceBounds.size.width;
-        preSize = _preRotationSize.width;
-        if (self.resizesCenterView && II_FLOAT_EQUAL(offset, 0)) {
-            offset = offset + (_preRotationCenterSize.width - _preRotationSize.width);
-        }
-        if (!II_FLOAT_EQUAL(offset, 0)) {
-            if (II_FLOAT_EQUAL(offset, preSize - _ledge[IIViewDeckLeftSide]))
-                adjustOffset = IIViewDeckLeftSide;
-            else if (II_FLOAT_EQUAL(offset, _ledge[IIViewDeckRightSide] - preSize))
-                adjustOffset = IIViewDeckRightSide;
-        }
+    offset = self.slidingControllerView.frame.origin.x;
+    max = self.referenceBounds.size.width;
+    preSize = _preRotationSize.width;
+    if (self.resizesCenterView && II_FLOAT_EQUAL(offset, 0)) {
+        offset = offset + (_preRotationCenterSize.width - _preRotationSize.width);
+    }
+    if (!II_FLOAT_EQUAL(offset, 0)) {
+        if (II_FLOAT_EQUAL(offset, preSize - _ledge[IIViewDeckLeftSide]))
+            adjustOffset = IIViewDeckLeftSide;
+        else if (II_FLOAT_EQUAL(offset, _ledge[IIViewDeckRightSide] - preSize))
+            adjustOffset = IIViewDeckRightSide;
     }
     
     if (self.sizeMode != IIViewDeckLedgeSizeMode) {
@@ -1148,8 +921,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         
         [self setLedgeValue:_ledge[IIViewDeckLeftSide] + self.referenceBounds.size.width - _preRotationSize.width forSide:IIViewDeckLeftSide];
         [self setLedgeValue:_ledge[IIViewDeckRightSide] + self.referenceBounds.size.width - _preRotationSize.width forSide:IIViewDeckRightSide];
-        [self setLedgeValue:_ledge[IIViewDeckTopSide] + self.referenceBounds.size.height - _preRotationSize.height forSide:IIViewDeckTopSide];
-        [self setLedgeValue:_ledge[IIViewDeckBottomSide] + self.referenceBounds.size.height - _preRotationSize.height forSide:IIViewDeckBottomSide];
     } else {
         if (offset > 0) {
             offset = max - preSize + offset;
@@ -1167,18 +938,10 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
             offset = _ledge[adjustOffset] - self.referenceBounds.size.width;
             break;
             
-        case IIViewDeckTopSide:
-            offset = self.referenceBounds.size.height - _ledge[adjustOffset];
-            break;
-            
-        case IIViewDeckBottomSide:
-            offset = _ledge[adjustOffset] - self.referenceBounds.size.height;
-            break;
-            
         default:
             break;
     }
-    [self setSlidingFrameForOffset:offset forOrientation:_offsetOrientation animated:NO];
+    [self setSlidingFrameForOffset:offset animated:NO];
     
     _preRotationSize = CGSizeZero;
 }
@@ -1201,12 +964,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         case IIViewDeckRightSide:
             return _ledge[viewDeckSide] - self.referenceBounds.size.width;
             break;
-            
-        case IIViewDeckTopSide:
-            return self.referenceBounds.size.height - _ledge[viewDeckSide];
-            
-        case IIViewDeckBottomSide:
-            return _ledge[viewDeckSide] - self.referenceBounds.size.height;
     }
     
     return 0;
@@ -1214,7 +971,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (void)doForControllers:(void(^)(UIViewController* controller, IIViewDeckSide side))action {
     if (!action) return;
-    for (IIViewDeckSide side=IIViewDeckLeftSide; side<=IIViewDeckBottomSide; side++) {
+    for (IIViewDeckSide side=IIViewDeckLeftSide; side<=IIViewDeckRightSide; side++) {
         action(_controllers[side], side);
     }
 }
@@ -1231,19 +988,13 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         case IIViewDeckRightSide:
             return IIViewDeckLeftSide;
             
-        case IIViewDeckTopSide:
-            return IIViewDeckBottomSide;
-            
-        case IIViewDeckBottomSide:
-            return IIViewDeckTopSide;
-            
         default:
             return IIViewDeckNoSide;
     }
 }
 
 - (IIViewDeckSide)sideForController:(UIViewController*)controller {
-    for (IIViewDeckSide side=IIViewDeckLeftSide; side<=IIViewDeckBottomSide; side++) {
+    for (IIViewDeckSide side=IIViewDeckLeftSide; side<=IIViewDeckRightSide; side++) {
         if (_controllers[side] == controller) return side;
     }
     
@@ -1296,8 +1047,8 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     }
 }
 
-- (void)notifyDidChangeOffset:(CGFloat)offset orientation:(IIViewDeckOffsetOrientation)orientation panning:(BOOL)panning {
-    [self performDelegate:@selector(viewDeckController:didChangeOffset:orientation:panning:) offset:offset orientation:orientation panning:panning];
+- (void)notifyDidChangeOffset:(CGFloat)offset panning:(BOOL)panning {
+    [self performDelegate:@selector(viewDeckController:didChangeOffset:panning:) offset:offset panning:panning];
 }
 
 - (void)notifyAppearanceForSide:(IIViewDeckSide)viewDeckSide animated:(BOOL)animated from:(int)from to:(int)to {
@@ -1393,12 +1144,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         case IIViewDeckRightSide:
             return CGRectGetMaxX(self.slidingControllerView.frame) >= self.referenceBounds.size.width;
             
-        case IIViewDeckTopSide:
-            return CGRectGetMinY(self.slidingControllerView.frame) <= 0;
-            
-        case IIViewDeckBottomSide:
-            return CGRectGetMaxY(self.slidingControllerView.frame) >= self.referenceBounds.size.height;
-            
         default:
             return YES;
     }
@@ -1406,7 +1151,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 
 - (BOOL)isAnySideOpen {
-    return [self isSideOpen:IIViewDeckLeftSide] || [self isSideOpen:IIViewDeckRightSide] || [self isSideOpen:IIViewDeckTopSide] || [self isSideOpen:IIViewDeckBottomSide];
+    return [self isSideOpen:IIViewDeckLeftSide] || [self isSideOpen:IIViewDeckRightSide];
 }
 
 - (IIViewDeckSide)openSide{
@@ -1414,10 +1159,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         return IIViewDeckLeftSide;
     } else if ([self isSideOpen:IIViewDeckRightSide]){
         return IIViewDeckRightSide;
-    } else if ([self isSideOpen:IIViewDeckTopSide]){
-        return IIViewDeckTopSide;
-    } else if ([self isSideOpen:IIViewDeckBottomSide]){
-        return IIViewDeckBottomSide;
     } else {
         return 0;
     }
@@ -1433,12 +1174,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
             
         case IIViewDeckRightSide:
             return II_FLOAT_EQUAL(CGRectGetMaxX(self.slidingControllerView.frame), _ledge[IIViewDeckRightSide]);
-            
-        case IIViewDeckTopSide:
-            return II_FLOAT_EQUAL(CGRectGetMinY(self.slidingControllerView.frame), self.referenceBounds.size.height - _ledge[IIViewDeckTopSide]);
-            
-        case IIViewDeckBottomSide:
-            return II_FLOAT_EQUAL(CGRectGetMaxY(self.slidingControllerView.frame), _ledge[IIViewDeckBottomSide]);
             
         default:
             return NO;
@@ -1491,7 +1226,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         [self disableUserInteraction];
         [UIView animateWithDuration:duration delay:0 options:options animations:^{
             [self hide:NO controllerViewForSide:side];
-            [self setSlidingFrameForOffset:[self ledgeOffsetForSide:side] forOrientation:IIViewDeckOffsetOrientationFromIIViewDeckSide(side) animated:YES];
+            [self setSlidingFrameForOffset:[self ledgeOffsetForSide:side] animated:YES];
             [self centerViewHidden];
         } completion:^(BOOL finished) {
             [self enableUserInteraction];
@@ -1559,7 +1294,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         [self disableUserInteraction];
         [UIView animateWithDuration:[self openSlideDuration:YES]*longFactor delay:0 options:options animations:^{
             [self hide:NO controllerViewForSide:side];
-            [self setSlidingFrameForOffset:bounceOffset forOrientation:IIViewDeckOffsetOrientationFromIIViewDeckSide(side) animated:YES];
+            [self setSlidingFrameForOffset:bounceOffset animated:YES];
         } completion:^(BOOL finished) {
             [self centerViewHidden];
             // run block if it's defined
@@ -1568,7 +1303,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
             
             // now slide the view back to the ledge position
             [UIView animateWithDuration:[self openSlideDuration:YES]*shortFactor delay:0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionLayoutSubviews | UIViewAnimationOptionBeginFromCurrentState animations:^{
-                [self setSlidingFrameForOffset:targetOffset forOrientation:IIViewDeckOffsetOrientationFromIIViewDeckSide(side) animated:YES];
+                [self setSlidingFrameForOffset:targetOffset animated:YES];
             } completion:^(BOOL finished) {
                 [self enableUserInteraction];
                 [self setAccessibilityForCenterTapper]; // update since the frame and the frame's intersection with the window will have changed
@@ -1606,7 +1341,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     [self notifyWillCloseSide:side animated:animated];
     [self disableUserInteraction];
     [UIView animateWithDuration:duration delay:0 options:options animations:^{
-        [self setSlidingFrameForOffset:0 forOrientation:IIViewDeckOffsetOrientationFromIIViewDeckSide(side) animated:animated];
+        [self setSlidingFrameForOffset:0 animated:animated];
         [self centerViewVisible];
     } completion:^(BOOL finished) {
         [self hideAppropriateSideViews];
@@ -1653,14 +1388,14 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     [self notifyWillCloseSide:side animated:animated];
     [self disableUserInteraction];
     [UIView animateWithDuration:[self openSlideDuration:YES]*shortFactor delay:0 options:options animations:^{
-        [self setSlidingFrameForOffset:bounceOffset forOrientation:IIViewDeckOffsetOrientationFromIIViewDeckSide(side) animated:YES];
+        [self setSlidingFrameForOffset:bounceOffset animated:YES];
     } completion:^(BOOL finished) {
         // run block if it's defined
         if (bounced) bounced(self);
         [self performDelegate:@selector(viewDeckController:didBounceViewSide:closingController:) side:side controller:_controllers[side]];
         
         [UIView animateWithDuration:[self closeSlideDuration:YES]*longFactor delay:0 options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionLayoutSubviews animations:^{
-            [self setSlidingFrameForOffset:0 forOrientation:IIViewDeckOffsetOrientationFromIIViewDeckSide(side) animated:YES];
+            [self setSlidingFrameForOffset:0 animated:YES];
             [self centerViewVisible];
         } completion:^(BOOL finished2) {
             [self hideAppropriateSideViews];
@@ -1797,43 +1532,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     return [self closeSideView:IIViewDeckRightSide bounceOffset:-self.referenceBounds.size.width bounced:bounced completion:completed];
 }
 
-#pragma mark - right view, special case for navigation stuff
-
-- (BOOL)canRightViewPushViewControllerOverCenterController {
-    return [self.centerController isKindOfClass:[UINavigationController class]];
-}
-
-- (void)rightViewPushViewControllerOverCenterController:(UIViewController*)controller {
-    NSAssert([self.centerController isKindOfClass:[UINavigationController class]], @"cannot rightViewPushViewControllerOverCenterView when center controller is not a navigation controller");
-    
-    UIView* view = self.view;
-    UIGraphicsBeginImageContextWithOptions(view.bounds.size, YES, 0.0);
-    
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    [view.layer renderInContext:context];
-    UIImage *deckshot = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    UIImageView* shotView = [[UIImageView alloc] initWithImage:deckshot];
-    shotView.frame = view.frame;
-    [view.superview addSubview:shotView];
-    CGRect targetFrame = view.frame;
-    view.frame = CGRectOffset(view.frame, view.frame.size.width, 0);
-    
-    [self closeRightViewAnimated:NO];
-    UINavigationController* navController = self.centerController.navigationController ? self.centerController.navigationController :(UINavigationController*)self.centerController;
-    [navController pushViewController:controller animated:NO];
-    
-    [self disableUserInteraction];
-    [UIView animateWithDuration:0.3 delay:0 options:0 animations:^{
-        shotView.frame = CGRectOffset(shotView.frame, -view.frame.size.width, 0);
-        view.frame = targetFrame;
-    } completion:^(BOOL finished) {
-        [self enableUserInteraction];
-        [shotView removeFromSuperview];
-    }];
-}
-
 #pragma mark - disable pan over certain controllers
 
 - (void)disablePanOverViewsOfClass:(Class)viewClass {
@@ -1850,265 +1548,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (NSArray*)viewClassesWithDisabledPan {
     return [_disabledPanClasses allObjects];
-}
-
-
-#pragma mark - Top Side
-
-- (BOOL)toggleTopView {
-    return [self toggleTopViewAnimated:YES];
-}
-
-- (BOOL)openTopView {
-    return [self openTopViewAnimated:YES];
-}
-
-- (BOOL)closeTopView {
-    return [self closeTopViewAnimated:YES];
-}
-
-- (BOOL)toggleTopViewAnimated:(BOOL)animated {
-    return [self toggleTopViewAnimated:animated completion:nil];
-}
-
-- (BOOL)toggleTopViewAnimated:(BOOL)animated completion:(IIViewDeckControllerBlock)completed {
-    if ([self isSideClosed:IIViewDeckTopSide])
-        return [self openTopViewAnimated:animated completion:completed];
-    else
-        return [self closeTopViewAnimated:animated completion:completed];
-}
-
-- (BOOL)openTopViewAnimated:(BOOL)animated {
-    return [self openTopViewAnimated:animated completion:nil];
-}
-
-- (BOOL)openTopViewAnimated:(BOOL)animated completion:(IIViewDeckControllerBlock)completed {
-    return [self openSideView:IIViewDeckTopSide animated:animated completion:completed];
-}
-
-- (BOOL)openTopViewBouncing:(IIViewDeckControllerBounceBlock)bounced {
-    return [self openTopViewBouncing:bounced completion:nil];
-}
-
-- (BOOL)openTopViewBouncing:(IIViewDeckControllerBounceBlock)bounced completion:(IIViewDeckControllerBlock)completed {
-    return [self openSideView:IIViewDeckTopSide bounceOffset:self.referenceBounds.size.height targetOffset:self.referenceBounds.size.height - _ledge[IIViewDeckTopSide] bounced:bounced completion:completed];
-}
-
-- (BOOL)closeTopViewAnimated:(BOOL)animated {
-    return [self closeTopViewAnimated:animated completion:nil];
-}
-
-- (BOOL)closeTopViewAnimated:(BOOL)animated completion:(IIViewDeckControllerBlock)completed {
-    return [self closeTopViewAnimated:animated duration:DEFAULT_DURATION completion:completed];
-}
-
-- (BOOL)closeTopViewAnimated:(BOOL)animated duration:(NSTimeInterval)duration completion:(IIViewDeckControllerBlock)completed {
-    return [self closeSideView:IIViewDeckTopSide animated:animated duration:duration completion:completed];
-}
-
-- (BOOL)closeTopViewBouncing:(IIViewDeckControllerBounceBlock)bounced {
-    return [self closeTopViewBouncing:bounced completion:nil];
-}
-
-- (BOOL)closeTopViewBouncing:(IIViewDeckControllerBounceBlock)bounced completion:(IIViewDeckControllerBlock)completed {
-    return [self closeSideView:IIViewDeckTopSide bounceOffset:self.referenceBounds.size.height bounced:bounced completion:completed];
-}
-
-
-#pragma mark - Bottom Side
-
-- (BOOL)toggleBottomView {
-    return [self toggleBottomViewAnimated:YES];
-}
-
-- (BOOL)openBottomView {
-    return [self openBottomViewAnimated:YES];
-}
-
-- (BOOL)closeBottomView {
-    return [self closeBottomViewAnimated:YES];
-}
-
-- (BOOL)toggleBottomViewAnimated:(BOOL)animated {
-    return [self toggleBottomViewAnimated:animated completion:nil];
-}
-
-- (BOOL)toggleBottomViewAnimated:(BOOL)animated completion:(IIViewDeckControllerBlock)completed {
-    if ([self isSideClosed:IIViewDeckBottomSide])
-        return [self openBottomViewAnimated:animated completion:completed];
-    else
-        return [self closeBottomViewAnimated:animated completion:completed];
-}
-
-- (BOOL)openBottomViewAnimated:(BOOL)animated {
-    return [self openBottomViewAnimated:animated completion:nil];
-}
-
-- (BOOL)openBottomViewAnimated:(BOOL)animated completion:(IIViewDeckControllerBlock)completed {
-    return [self openSideView:IIViewDeckBottomSide animated:animated completion:completed];
-}
-
-- (BOOL)openBottomViewBouncing:(IIViewDeckControllerBounceBlock)bounced {
-    return [self openBottomViewBouncing:bounced completion:nil];
-}
-
-- (BOOL)openBottomViewBouncing:(IIViewDeckControllerBounceBlock)bounced completion:(IIViewDeckControllerBlock)completed {
-    return [self openSideView:IIViewDeckBottomSide bounceOffset:-self.referenceBounds.size.height targetOffset:_ledge[IIViewDeckBottomSide] - self.referenceBounds.size.height bounced:bounced completion:completed];
-}
-
-- (BOOL)closeBottomViewAnimated:(BOOL)animated {
-    return [self closeBottomViewAnimated:animated completion:nil];
-}
-
-- (BOOL)closeBottomViewAnimated:(BOOL)animated completion:(IIViewDeckControllerBlock)completed {
-    return [self closeBottomViewAnimated:animated duration:DEFAULT_DURATION completion:completed];
-}
-
-- (BOOL)closeBottomViewAnimated:(BOOL)animated duration:(NSTimeInterval)duration completion:(IIViewDeckControllerBlock)completed {
-    return [self closeSideView:IIViewDeckBottomSide animated:animated duration:duration completion:completed];
-}
-
-- (BOOL)closeBottomViewBouncing:(IIViewDeckControllerBounceBlock)bounced {
-    return [self closeBottomViewBouncing:bounced completion:nil];
-}
-
-- (BOOL)closeBottomViewBouncing:(IIViewDeckControllerBounceBlock)bounced completion:(IIViewDeckControllerBlock)completed {
-    return [self closeSideView:IIViewDeckBottomSide bounceOffset:-self.referenceBounds.size.height bounced:bounced completion:completed];
-}
-
-#pragma mark - Side Bouncing
-
-- (BOOL)previewBounceView:(IIViewDeckSide)viewDeckSide {
-    return [self previewBounceView:viewDeckSide withCompletion:nil];
-}
-
-- (BOOL)previewBounceView:(IIViewDeckSide)viewDeckSide withCompletion:(IIViewDeckControllerBlock)completed {
-    return [self previewBounceView:viewDeckSide toDistance:40.0f duration:1.2f callDelegate:YES completion:completed];
-}
-
-- (BOOL)previewBounceView:(IIViewDeckSide)viewDeckSide toDistance:(CGFloat)distance duration:(NSTimeInterval)duration callDelegate:(BOOL)callDelegate completion:(IIViewDeckControllerBlock)completed {
-    return [self previewBounceView:viewDeckSide toDistance:distance duration:duration numberOfBounces:4.0f dampingFactor:0.40f callDelegate:callDelegate completion:completed];
-}
-
-- (BOOL)previewBounceView:(IIViewDeckSide)viewDeckSide toDistance:(CGFloat)distance duration:(NSTimeInterval)duration numberOfBounces:(CGFloat)numberOfBounces dampingFactor:(CGFloat)zeta callDelegate:(BOOL)callDelegate completion:(IIViewDeckControllerBlock)completed {
-    // Check if the requested side to bounce is nil, or if it's already open
-    if (![self controllerForSide:viewDeckSide] || [self isSideOpen:viewDeckSide]) return NO;
-    
-    // check the delegate to allow bouncing
-    if (callDelegate && ![self checkDelegate:@selector(viewDeckController:shouldPreviewBounceViewSide:) side:viewDeckSide]) return NO;
-    // also close any view that's open. Since the delegate can cancel the close, check the result.
-    if (callDelegate && [self isAnySideOpen]) {
-        if (![self toggleOpenViewAnimated:YES]) return NO;
-    }
-    // check for in-flight preview bounce animation, do not add another if so
-    if ([self.slidingControllerView.layer animationForKey:@"previewBounceAnimation"]) {
-        return NO;
-    }
-    
-    NSArray *animationValues = [self bouncingValuesForViewSide:viewDeckSide maximumBounce:distance numberOfBounces:numberOfBounces dampingFactor:zeta duration:duration];
-    if (!animationValues) {
-        return NO;
-    }
-    
-    UIViewController *previewController = [self controllerForSide:viewDeckSide];
-    NSString *keyPath = @"position.x";
-    
-    if (viewDeckSide == IIViewDeckBottomSide || viewDeckSide == IIViewDeckTopSide) {
-        keyPath = @"position.y";
-    }
-    
-    CAKeyframeAnimation *animation = [CAKeyframeAnimation animationWithKeyPath:keyPath];
-    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
-    animation.duration = duration;
-    animation.values = animationValues;
-    animation.removedOnCompletion = YES;
-    
-    previewController.view.hidden = NO;
-    
-    [CATransaction begin];
-    [CATransaction setValue:[NSNumber numberWithFloat:duration] forKey:kCATransactionAnimationDuration];
-    [CATransaction setCompletionBlock:^{
-        // only re-hide controller if the view has not been panned mid-animation
-        if (_offset == 0.0f) {
-            previewController.view.hidden = YES;
-        }
-        
-        // perform completion and delegate call
-        if (completed) completed(self, YES);
-        if (callDelegate) [self performDelegate:@selector(viewDeckController:didPreviewBounceViewSide:animated:) side:viewDeckSide animated:YES];
-    }];
-    [self.slidingControllerView.layer addAnimation:animation forKey:@"previewBounceAnimation"];
-    
-    // Inform delegate
-    if (callDelegate) [self performDelegate:@selector(viewDeckController:willPreviewBounceViewSide:animated:) side:viewDeckSide animated:YES];
-    
-    // Commit animation
-    [CATransaction commit];
-    
-    return YES;
-}
-
-- (NSArray *)bouncingValuesForViewSide:(IIViewDeckSide)viewDeckSide maximumBounce:(CGFloat)maxBounce numberOfBounces:(CGFloat)numberOfBounces dampingFactor:(CGFloat)zeta duration:(NSTimeInterval)duration {
-    
-    // Underdamped, Free Vibration of a SDOF System
-    // u(t) = abs(e^(-zeta * wn * t) * ((Vo/wd) * sin(wd * t))
-    
-    // Vo, initial velocity, is calculated to provide the desired maxBounce and
-    // animation duration. The damped period (wd) and distance of the maximum (first)
-    // bounce can be controlled either via the initial condition Vo or the damping
-    // factor zeta for a desired duration, Vo is simpler mathematically.
-    
-    NSUInteger steps = (NSUInteger)MIN(floorf(duration * 100.0f), 100);
-    float time = 0.0;
-    
-    NSMutableArray *values = [NSMutableArray arrayWithCapacity:steps];
-    
-    double offset = 0.0;
-    float Td = (2.0f * duration) / numberOfBounces; //Damped period, calculated to give the number of bounces desired in the duration specified (2 bounces per Td)
-    float wd = (2.0f * M_PI)/Td; // Damped frequency
-    zeta = MIN(MAX(0.0001f, zeta), 0.9999f); // For an underdamped system, we must have 0 < zeta < 1
-    float zetaFactor = sqrtf(1 - powf(zeta, 2.0f)); // Used in multiple places
-    float wn = wd/zetaFactor; // Natural frequency
-    float Vo = maxBounce * wd/(expf(-zeta/zetaFactor * (0.18f * Td) * wd) * sinf(0.18f * Td * wd));
-    
-    // Determine parameters based on direction
-    CGFloat position = 0.0f;
-    NSInteger direction = 1;
-    switch (viewDeckSide) {
-        case IIViewDeckLeftSide:
-            position = self.slidingControllerView.layer.position.x;
-            direction = 1;
-            break;
-            
-        case IIViewDeckRightSide:
-            position = self.slidingControllerView.layer.position.x;
-            direction = -1;
-            break;
-            
-        case IIViewDeckTopSide:
-            position = self.slidingControllerView.layer.position.y;
-            direction = 1;
-            break;
-            
-        case IIViewDeckBottomSide:
-            position = self.slidingControllerView.layer.position.y;
-            direction = -1;
-            break;
-            
-        default:
-            return nil;
-            break;
-    }
-    
-    // Calculate steps
-    for (int t = 0; t < steps; t++) {
-        time = (t / (float)steps) * duration;
-        offset = fabs(expf(-zeta * wn * time) * ((Vo / wd) * sin(wd * time)));
-        offset = direction * [self limitOffset:offset forOrientation:IIViewDeckOffsetOrientationFromIIViewDeckSide(viewDeckSide)] + position;
-        [values addObject:[NSNumber numberWithFloat:offset]];
-    }
-    
-    return values;
 }
 
 #pragma mark - toggling open view
@@ -2133,14 +1572,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         fromSide = IIViewDeckRightSide;
         toSide = IIViewDeckLeftSide;
         targetOffset = self.referenceBounds.size.width - _ledge[IIViewDeckLeftSide];
-    } else if (([self isSideOpen:IIViewDeckTopSide])) {
-        fromSide = IIViewDeckTopSide;
-        toSide = IIViewDeckBottomSide;
-        targetOffset = _ledge[IIViewDeckBottomSide] - self.referenceBounds.size.height;
-    } else if (([self isSideOpen:IIViewDeckBottomSide])) {
-        fromSide = IIViewDeckBottomSide;
-        toSide = IIViewDeckTopSide;
-        targetOffset = self.referenceBounds.size.height - _ledge[IIViewDeckTopSide];
     } else {
         return NO;
     }
@@ -2150,11 +1581,11 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     
     [self notifyWillCloseSide:fromSide animated:animated];
     [UIView animateWithDuration:[self closeSlideDuration:animated] delay:0 options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionLayoutSubviews animations:^{
-        [self setSlidingFrameForOffset:0 forOrientation:IIViewDeckOffsetOrientationFromIIViewDeckSide(fromSide) animated:YES];
+        [self setSlidingFrameForOffset:0 animated:YES];
     } completion:^(BOOL finished) {
         [self notifyWillOpenSide:toSide animated:animated];
         [UIView animateWithDuration:[self openSlideDuration:animated] delay:0 options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionLayoutSubviews animations:^{
-            [self setSlidingFrameForOffset:targetOffset forOrientation:IIViewDeckOffsetOrientationFromIIViewDeckSide(toSide) animated:YES];
+            [self setSlidingFrameForOffset:targetOffset animated:YES];
         } completion:^(BOOL finished) {
             [self notifyDidOpenSide:toSide animated:animated];
         }];
@@ -2183,10 +1614,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         return [self closeLeftViewAnimated:animated duration:duration completion:completed];
     } else if (![self isSideClosed:IIViewDeckRightSide]) {
         return [self closeRightViewAnimated:animated duration:duration completion:completed];
-    } else if (![self isSideClosed:IIViewDeckTopSide]) {
-        return [self closeTopViewAnimated:animated duration:duration completion:completed];
-    } else if (![self isSideClosed:IIViewDeckBottomSide]) {
-        return [self closeBottomViewAnimated:animated duration:duration completion:completed];
     }
     
     if (completed) completed(self, YES);
@@ -2203,10 +1630,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         return [self closeLeftViewBouncing:bounced completion:completed];
     } else if (([self isSideOpen:IIViewDeckRightSide])) {
         return [self closeRightViewBouncing:bounced completion:completed];
-    } else if (([self isSideOpen:IIViewDeckTopSide])) {
-        return [self closeTopViewBouncing:bounced completion:completed];
-    } else if (([self isSideOpen:IIViewDeckBottomSide])) {
-        return [self closeBottomViewBouncing:bounced completion:completed];
     }
     
     if (completed) completed(self, YES);
@@ -2276,19 +1699,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
             else
                 [self closeRightViewBouncing:nil];
         }
-        if (self.bottomController && CGRectGetMinY(self.slidingControllerView.frame) < 0) {
-            if (self.centerhiddenInteractivity == IIViewDeckCenterHiddenNotUserInteractiveWithTapToClose)
-                [self closeBottomView];
-            else
-                [self closeBottomViewBouncing:nil];
-        }
-        
-        if (self.topController && CGRectGetMinY(self.slidingControllerView.frame) > 0) {
-            if (self.centerhiddenInteractivity == IIViewDeckCenterHiddenNotUserInteractiveWithTapToClose)
-                [self closeTopView];
-            else
-                [self closeTopViewBouncing:nil];
-        }
     }
 }
 
@@ -2351,24 +1761,9 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         if (!result) return result;
     }
     
-    IIViewDeckOffsetOrientation orientation;
-    CGPoint velocity = [panner velocityInView:self.referenceView];
-    if (ABS(velocity.x) >= ABS(velocity.y))
-        orientation = IIViewDeckHorizontalOrientation;
-    else
-        orientation = IIViewDeckVerticalOrientation;
-    
-    CGFloat pv;
-    IIViewDeckSide minSide, maxSide;
-    if (orientation == IIViewDeckHorizontalOrientation) {
-        minSide = IIViewDeckLeftSide;
-        maxSide = IIViewDeckRightSide;
-        pv = self.slidingControllerView.frame.origin.x;
-    } else {
-        minSide = IIViewDeckTopSide;
-        maxSide = IIViewDeckBottomSide;
-        pv = self.slidingControllerView.frame.origin.y;
-    }
+    IIViewDeckSide minSide = IIViewDeckLeftSide;
+    IIViewDeckSide maxSide = IIViewDeckRightSide;
+    CGFloat pv = self.slidingControllerView.frame.origin.x;
     
     if (self.panningMode == IIViewDeckDelegatePanning && [self.delegate respondsToSelector:@selector(viewDeckController:shouldPan:)]) {
         if (![self.delegate viewDeckController:self shouldPan:panner])
@@ -2377,7 +1772,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     
     if (pv != 0) return YES;
     
-    CGFloat v = [self locationOfPanner:panner orientation:orientation];
+    CGFloat v = [self locationOfPanner:panner];
     BOOL ok = YES;
     
     if (v > 0) {
@@ -2425,21 +1820,13 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     return NO;
 }
 
-- (CGFloat)locationOfPanner:(UIPanGestureRecognizer*)panner orientation:(IIViewDeckOffsetOrientation)orientation {
+- (CGFloat)locationOfPanner:(UIPanGestureRecognizer*)panner {
     CGPoint pan = [panner translationInView:self.referenceView];
-    CGFloat ofs = orientation == IIViewDeckHorizontalOrientation ? (pan.x+_panOrigin.x) : (pan.y + _panOrigin.y);
+    CGFloat ofs = (pan.x+_panOrigin.x);
     
-    IIViewDeckSide minSide, maxSide;
-    CGFloat max;
-    if (orientation == IIViewDeckHorizontalOrientation) {
-        minSide = IIViewDeckLeftSide;
-        maxSide = IIViewDeckRightSide;
-        max = self.referenceBounds.size.width;
-    } else {
-        minSide = IIViewDeckTopSide;
-        maxSide = IIViewDeckBottomSide;
-        max = self.referenceBounds.size.height;
-    }
+    IIViewDeckSide minSide = IIViewDeckLeftSide;
+    IIViewDeckSide maxSide = IIViewDeckRightSide;
+    CGFloat max = self.referenceBounds.size.width;
     if (!_controllers[minSide]) ofs = MIN(0, ofs);
     if (!_controllers[maxSide]) ofs = MAX(0, ofs);
     
@@ -2456,42 +1843,18 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         ofs = lofs;
     }
     
-    return [self limitOffset:ofs forOrientation:orientation];
+    return [self limitOffset:ofs];
 }
-
 
 - (void)panned:(UIPanGestureRecognizer*)panner {
-    if (!_enabled) return;
-    
-    if (_offset == 0 && panner.state == UIGestureRecognizerStateBegan) {
-        CGPoint velocity = [panner velocityInView:self.referenceView];
-        if (ABS(velocity.x) >= ABS(velocity.y))
-            [self panned:panner orientation:IIViewDeckHorizontalOrientation];
-        else
-            [self panned:panner orientation:IIViewDeckVerticalOrientation];
-    } else {
-        [self panned:panner orientation:_offsetOrientation];
-    }
-}
-
-- (void)panned:(UIPanGestureRecognizer*)panner orientation:(IIViewDeckOffsetOrientation)orientation {
     [self setZoomScaleSide:0];
     [self setParallax];
     
-    CGFloat pv, m;
-    IIViewDeckSide minSide, maxSide;
-    if (orientation == IIViewDeckHorizontalOrientation) {
-        pv = self.slidingControllerView.frame.origin.x;
-        m = self.referenceBounds.size.width;
-        minSide = IIViewDeckLeftSide;
-        maxSide = IIViewDeckRightSide;
-    } else {
-        pv = self.slidingControllerView.frame.origin.y;
-        m = self.referenceBounds.size.height;
-        minSide = IIViewDeckTopSide;
-        maxSide = IIViewDeckBottomSide;
-    }
-    CGFloat v = [self locationOfPanner:panner orientation:orientation];
+    CGFloat pv = self.slidingControllerView.frame.origin.x;
+    CGFloat m = self.referenceBounds.size.width;
+    IIViewDeckSide minSide = IIViewDeckLeftSide;
+    IIViewDeckSide maxSide = IIViewDeckRightSide;
+    CGFloat v = [self locationOfPanner:panner];
     
     IIViewDeckSide closeSide = IIViewDeckNoSide;
     IIViewDeckSide openSide = IIViewDeckNoSide;
@@ -2538,16 +1901,16 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         self.slidingControllerView.frame = [[self.slidingControllerView.layer presentationLayer] frame];
         [self.slidingControllerView.layer removeAnimationForKey:@"previewBounceAnimation"];
         [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionLayoutSubviews | UIViewAnimationOptionBeginFromCurrentState animations:^{
-            [self panToSlidingFrameForOffset:v forOrientation:orientation animated:YES];
+            [self panToSlidingFrameForOffset:v animated:YES];
         } completion:nil];
     } else {
-        [self panToSlidingFrameForOffset:v forOrientation:orientation animated:NO];
+        [self panToSlidingFrameForOffset:v animated:NO];
     }
     
     if (panner.state == UIGestureRecognizerStateEnded ||
         panner.state == UIGestureRecognizerStateCancelled ||
         panner.state == UIGestureRecognizerStateFailed) {
-        CGFloat sv = orientation == IIViewDeckHorizontalOrientation ? self.slidingControllerView.frame.origin.x : self.slidingControllerView.frame.origin.y;
+        CGFloat sv = self.slidingControllerView.frame.origin.x;
         if (II_FLOAT_EQUAL(sv, 0.0f))
             [self centerViewVisible];
         else
@@ -2556,7 +1919,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         CGFloat lm3 = (m-_ledge[minSide]) / 3.0;
         CGFloat rm3 = (m-_ledge[maxSide]) / 3.0;
         CGPoint velocity = [panner velocityInView:self.referenceView];
-        CGFloat orientationVelocity = orientation == IIViewDeckHorizontalOrientation ? velocity.x : velocity.y;
+        CGFloat orientationVelocity = velocity.x;
         if (ABS(orientationVelocity) < 500) {
             // small velocity, no movement
             if (v >= m - _ledge[minSide] - lm3) {
@@ -2608,7 +1971,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (void) setParallax {
     if(_parallaxAmount <= 0.0) return;
-    
     self.leftController.view.frame = [self getLeftParallax];
     self.rightController.view.frame = [self getRightParallax];
 }
@@ -2633,7 +1995,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)addPanner:(UIView*)view {
     if (!view) return;
     
-    UIPanGestureRecognizer* panner = II_AUTORELEASE([[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(panned:)]);
+    UIPanGestureRecognizer* panner = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(panned:)];
     panner.cancelsTouchesInView = _panningCancelsTouchesInView;
     panner.delegate = self;
     [view addGestureRecognizer:panner];
@@ -2911,10 +2273,10 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     return ledge;
 }
 
-- (void)performDelegate:(SEL)selector offset:(CGFloat)offset orientation:(IIViewDeckOffsetOrientation)orientation panning:(BOOL)panning {
-    void (*objc_msgSendTyped)(id self, SEL _cmd, IIViewDeckController* foo, CGFloat offset, IIViewDeckOffsetOrientation orientation, BOOL panning) = (void*)objc_msgSend;
+- (void)performDelegate:(SEL)selector offset:(CGFloat)offset panning:(BOOL)panning {
+    void (*objc_msgSendTyped)(id self, SEL _cmd, IIViewDeckController* foo, CGFloat offset, BOOL panning) = (void*)objc_msgSend;
     if (self.delegate && [self.delegate respondsToSelector:selector])
-        objc_msgSendTyped(self.delegate, selector, self, offset, orientation, panning);
+        objc_msgSendTyped(self.delegate, selector, self, offset, panning);
     
     if (_delegateMode == IIViewDeckDelegateOnly)
         return;
@@ -2922,13 +2284,13 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     for (UIViewController* controller in self.controllers) {
         // check controller first
         if ([controller respondsToSelector:selector] && (id)controller != (id)self.delegate)
-            objc_msgSendTyped(controller, selector, self, offset, orientation, panning);
+            objc_msgSendTyped(controller, selector, self, offset, panning);
         
         // if that fails, check if it's a navigation controller and use the top controller
         else if ([controller isKindOfClass:[UINavigationController class]]) {
             UIViewController* topController = ((UINavigationController*)controller).topViewController;
             if ([topController respondsToSelector:selector] && (id)topController != (id)self.delegate)
-                objc_msgSendTyped(topController, selector, self, offset, orientation, panning);
+                objc_msgSendTyped(topController, selector, self, offset, panning);
         }
     }
 }
@@ -2959,9 +2321,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (void)setPanningView:(UIView *)panningView {
     if (_panningView != panningView) {
-        II_RELEASE(_panningView);
         _panningView = panningView;
-        II_RETAIN(_panningView);
         
         if (_viewFirstAppeared && _panningMode == IIViewDeckPanningViewPanning)
             [self setNeedsAddPanners];
@@ -3030,9 +2390,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     
     // make the switch
     if (prevController != controller) {
-        II_RELEASE(prevController);
         _controllers[side] = controller;
-        II_RETAIN(controller);
     }
     
     if (controller) {
@@ -3067,25 +2425,9 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     [self setController:rightController forSide:IIViewDeckRightSide];
 }
 
-- (UIViewController *)topController {
-    return [self controllerForSide:IIViewDeckTopSide];
-}
-
-- (void)setTopController:(UIViewController *)topController {
-    [self setController:topController forSide:IIViewDeckTopSide];
-}
-
 - (void)setZoomScale:(CGFloat)zoomScale{
     _zoomScale = zoomScale;
     [self setShadowEnabled:(_zoomScale == 1.0)];
-}
-
-- (UIViewController *)bottomController {
-    return [self controllerForSide:IIViewDeckBottomSide];
-}
-
-- (void)setBottomController:(UIViewController *)bottomController {
-    [self setController:bottomController forSide:IIViewDeckBottomSide];
 }
 
 
@@ -3140,8 +2482,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         [_centerController willMoveToParentViewController:nil];
         if (centerController == self.leftController) self.leftController = nil;
         if (centerController == self.rightController) self.rightController = nil;
-        if (centerController == self.topController) self.topController = nil;
-        if (centerController == self.bottomController) self.bottomController = nil;
         beforeBlock(_centerController);
         @try {
             [_centerController removeObserver:self forKeyPath:@"title"];
@@ -3157,14 +2497,12 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         
         
         [_centerController didMoveToParentViewController:nil];
-        II_RELEASE(_centerController);
     }
     
     // make the switch
     _centerController = centerController;
     
     if (_centerController) {
-        II_RETAIN(_centerController);
         [_centerController willMoveToParentViewController:self];
         [self addChildViewController:_centerController];
         [_centerController setViewDeckController:self];
@@ -3290,7 +2628,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     }
     
     if ([keyPath isEqualToString:@"bounds"]) {
-        [self setSlidingFrameForOffset:_offset forOrientation:_offsetOrientation animated:NO];
+        [self setSlidingFrameForOffset:_offset animated:NO];
         self.slidingControllerView.layer.shadowPath = [UIBezierPath bezierPathWithRect:self.referenceBounds].CGPath;
         UINavigationController* navController = [self.centerController isKindOfClass:[UINavigationController class]]
         ? (UINavigationController*)self.centerController
@@ -3318,7 +2656,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         [controller setViewDeckController:self]; // do this now since the transition block my run to late
         if (!_finishTransitionBlocks) {
             _finishTransitionBlocks = [NSMutableArray new];
-            II_RETAIN(_finishTransitionBlocks);
             [self addObserver:self forKeyPath:@"parentViewController" options:0 context:nil];
             [self addObserver:self forKeyPath:@"presentingViewController" options:0 context:nil];
         }
@@ -3337,7 +2674,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         for (void(^finishTransition)(void) in _finishTransitionBlocks) {
             finishTransition();
         }
-        II_RELEASE(_finishTransitionBlocks);
         _finishTransitionBlocks = nil;
     }
 }
@@ -3377,27 +2713,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)setCenterViewCornerRadius:(CGFloat)centerViewCornerRadius {
     _centerViewCornerRadius = centerViewCornerRadius;
     [self applyCenterViewCornerRadiusAnimated:NO];
-}
-
-- (UIBezierPath*)generateCenterViewCornerRadiusPath {
-    CGRect rect = self.slidingControllerView.layer.bounds;
-    if (_centerViewCornerRadius == 0)
-        return [UIBezierPath bezierPathWithRect:rect];
-    
-    // create mask path
-    CGSize radius = (CGSize) { _centerViewCornerRadius, _centerViewCornerRadius };
-    UIRectCorner corners = 0;
-    if (self.leftController)
-        corners |= UIRectCornerTopLeft | UIRectCornerBottomLeft;
-    if (self.rightController)
-        corners |= UIRectCornerTopRight | UIRectCornerBottomRight;
-    if (self.topController)
-        corners |= UIRectCornerTopLeft | UIRectCornerTopRight;
-    if (self.bottomController)
-        corners |= UIRectCornerBottomLeft | UIRectCornerBottomRight;
-    UIBezierPath* path = [UIBezierPath bezierPathWithRoundedRect:rect byRoundingCorners:corners cornerRadii:radius];
-    
-    return path;
 }
 
 - (void)applyCenterViewCornerRadiusAnimated:(BOOL)animated {
@@ -3460,6 +2775,23 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     mask.frame = [path bounds];
     _shadowLayer.shadowPath = [path CGPath];
     _shadowLayer.frame = self.slidingControllerView.layer.frame;
+}
+
+- (UIBezierPath*)generateCenterViewCornerRadiusPath {
+    CGRect rect = self.slidingControllerView.layer.bounds;
+    if (_centerViewCornerRadius == 0)
+        return [UIBezierPath bezierPathWithRect:rect];
+    
+    // create mask path
+    CGSize radius = (CGSize) { _centerViewCornerRadius, _centerViewCornerRadius };
+    UIRectCorner corners = 0;
+    if (self.leftController)
+        corners |= UIRectCornerTopLeft | UIRectCornerBottomLeft;
+    if (self.rightController)
+        corners |= UIRectCornerTopRight | UIRectCornerBottomRight;
+    UIBezierPath* path = [UIBezierPath bezierPathWithRoundedRect:rect byRoundingCorners:corners cornerRadii:radius];
+    
+    return path;
 }
 
 #pragma mark - Shadow
@@ -3568,10 +2900,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         controller = self.leftController;
     } else if (![self isSideClosed:IIViewDeckRightSide]) {
         controller = self.rightController;
-    } else if (![self isSideClosed:IIViewDeckBottomSide]) {
-        controller = self.bottomController;
-    } else if (![self isSideClosed:IIViewDeckTopSide]) {
-        controller = self.topController;
     } else {
         controller = self.centerController;
     }
@@ -3816,7 +3144,6 @@ static const char* viewDeckControllerKey = "ViewDeckController";
     });
 }
 
-
 @end
 
 
@@ -3838,8 +3165,4 @@ static const char* viewDeckControllerKey = "ViewDeckController";
     // intentionally empty
 }
 
-
-
-
 @end
-
