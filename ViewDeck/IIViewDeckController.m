@@ -857,9 +857,24 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+    _rotating = YES;
+    if (_preRotationSize.width == 0) {
+        _preRotationSize = self.referenceBounds.size;
+        _preRotationCenterSize = self.centerView.bounds.size;
+    }
+    _preRotationReopenSide = 0;
+    if (_zoomScale < 1.0 && [self isAnySideOpen]){
+        _preRotationReopenSide = [self openSide];
+        [self closeSideView:_preRotationReopenSide animated:NO completion:nil];
+    }
     [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
         
     } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        _rotating = NO;
+        if (_preRotationReopenSide != 0){
+            [self openSideView:_preRotationReopenSide animated:NO completion:nil];
+        }
+        [self setAccessibilityForCenterTapper]; // update since the frame and the frame's intersection with the window will have changed
         [self arrangeViewsAfterRotation];
         [self applyCenterViewCornerRadiusAnimated:NO];
         [self applyShadowToSlidingViewAnimated:NO];
