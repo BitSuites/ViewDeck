@@ -467,8 +467,10 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     anim.duration = slidingAnim.duration;
     anim.keyPath = @"position";
     anim.fillMode = kCAFillModeForwards;
-    anim.fromValue = slidingAnim.fromValue;
-    anim.toValue = slidingAnim.toValue ?: [NSValue valueWithCGPoint:self.slidingControllerView.layer.position];
+    if (!animated) {
+        anim.fromValue = slidingAnim.fromValue;
+        anim.toValue = slidingAnim.toValue ?: [NSValue valueWithCGPoint:self.slidingControllerView.layer.position];
+    }
     anim.timingFunction = slidingAnim.timingFunction;
     [_shadowLayer addAnimation:anim forKey:@"position"];
     
