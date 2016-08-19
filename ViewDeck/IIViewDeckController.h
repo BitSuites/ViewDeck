@@ -154,6 +154,7 @@ typedef void (^IIViewDeckControllerBounceBlock) (IIViewDeckController *controlle
 @property (nonatomic, ii_weak_property) __ii_weak id<UIGestureRecognizerDelegate> panningGestureDelegate;
 @property (nonatomic, assign, getter=isEnabled) BOOL enabled;
 @property (nonatomic, assign, getter=isElastic) BOOL elastic;
+@property (nonatomic, assign) BOOL allowRoation;
 
 @property (nonatomic, assign) CGFloat leftSize;
 @property (nonatomic, assign, readonly) CGFloat leftViewSize;

@@ -221,6 +221,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 @synthesize sizeMode = _sizeMode;
 @synthesize enabled = _enabled;
 @synthesize elastic = _elastic;
+@synthesize allowRoation = _allowRoation;
 @synthesize automaticallyUpdateTabBarItems = _automaticallyUpdateTabBarItems;
 @synthesize panningGestureDelegate = _panningGestureDelegate;
 @synthesize bounceDurationFactor = _bounceDurationFactor;
@@ -235,6 +236,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (void)commonInitWithCenterViewController:(UIViewController *)centerController {
     _elastic = YES;
+    _allowRoation = YES;
     _willAppearShouldArrangeViewsAfterRotation = (UIInterfaceOrientation)UIDeviceOrientationUnknown;
     _panningMode = IIViewDeckFullViewPanning;
     _panningCancelsTouchesInView = YES; // let's default to standard IOS behavior.
@@ -833,6 +835,11 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 }
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
+    if (!self.allowRoation) {
+        // Don't do anything we don't handle roation.
+        return NO;
+    }
+    
     _preRotationSize = self.referenceBounds.size;
     _preRotationCenterSize = self.centerView.bounds.size;
     _willAppearShouldArrangeViewsAfterRotation = interfaceOrientation;
@@ -847,6 +854,11 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
     [super willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
+    if (!self.allowRoation) {
+        // Don't do anything we don't handle roation.
+        return;
+    }
+    
     [self arrangeViewsAfterRotation];
     
     [self relayRotationMethod:^(UIViewController *controller) {
@@ -859,6 +871,11 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+    if (!self.allowRoation) {
+        // Don't do anything we don't handle roation.
+        return;
+    }
+    
     _rotating = YES;
     if (_preRotationSize.width == 0) {
         _preRotationSize = self.referenceBounds.size;
@@ -888,6 +905,11 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
     [super willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
+    if (!self.allowRoation) {
+        // Don't do anything we don't handle roation.
+        return;
+    }
+    
     _rotating = YES;
     if (_preRotationSize.width == 0) {
         _preRotationSize = self.referenceBounds.size;
@@ -906,6 +928,11 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 
 - (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation {
     [super didRotateFromInterfaceOrientation:fromInterfaceOrientation];
+    if (!self.allowRoation) {
+        // Don't do anything we don't handle roation.
+        return;
+    }
+    
     _rotating = NO;
     [self relayRotationMethod:^(UIViewController *controller) {
         [controller didRotateFromInterfaceOrientation:fromInterfaceOrientation];
