@@ -382,7 +382,8 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         CGRect currentBounds = [[UIScreen mainScreen] bounds];
         return CGRectMake(0, 0, currentBounds.size.height, currentBounds.size.width);
     } else {
-        return self.referenceView ? self.referenceView.bounds : [[UIScreen mainScreen] bounds];
+        return [[UIScreen mainScreen] bounds];
+//        return self.referenceView ? self.referenceView.bounds : [[UIScreen mainScreen] bounds];
     }
 }
 
