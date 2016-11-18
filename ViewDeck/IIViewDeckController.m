@@ -882,10 +882,10 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         _preRotationSize = self.referenceBounds.size;
         _preRotationCenterSize = self.centerView.bounds.size;
     }
-    _preRotationReopenSide = 0;
+    UIViewController *center = nil;
     if (_zoomScale < 1.0 && [self isAnySideOpen]){
-        _preRotationReopenSide = [self openSide];
-        [self closeSideView:_preRotationReopenSide animated:NO completion:nil];
+        center = _centerController;
+        [self setCenterController:nil];
     }
     [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
         
@@ -895,8 +895,8 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         [self arrangeViewsAfterRotation];
         [self applyCenterViewCornerRadiusAnimated:NO];
         [self applyShadowToSlidingViewAnimated:NO];
-        if (_preRotationReopenSide != 0){
-            [self openSideView:_preRotationReopenSide animated:NO completion:nil];
+        if (center != nil){
+            [self setCenterController:center];
         }
     }];
     [self relayRotationMethod:^(UIViewController *controller) {
@@ -1218,7 +1218,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     
     switch (viewDeckSide) {
         case IIViewDeckLeftSide:
-            return II_FLOAT_EQUAL(CGRectGetMinX(self.slidingControllerView.frame), self.referenceBounds.size.width - _ledge[IIViewDeckLeftSide]);
+            return II_FLOAT_EQUAL(CGRectGetMinX(self.slidingControllerView.frame), self.referenceBounds.size.width - _ledge[IIViewDeckLeftSide]) || II_FLOAT_EQUAL(CGRectGetMinX(self.slidingControllerView.frame), self.referenceBounds.size.height - _ledge[IIViewDeckLeftSide]);
             
         case IIViewDeckRightSide:
             return II_FLOAT_EQUAL(CGRectGetMaxX(self.slidingControllerView.frame), _ledge[IIViewDeckRightSide]);
