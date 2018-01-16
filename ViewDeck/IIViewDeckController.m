@@ -164,8 +164,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)performDelegate:(SEL)selector side:(IIViewDeckSide)viewDeckSize controller:(UIViewController*)controller;
 - (void)performDelegate:(SEL)selector offset:(CGFloat)offset panning:(BOOL)panning;
 
-- (void)relayRotationMethod:(void(^)(UIViewController* controller))relay;
-
 - (CGFloat)openSlideDuration:(BOOL)animated;
 - (CGFloat)closeSlideDuration:(BOOL)animated;
 
@@ -237,7 +235,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)commonInitWithCenterViewController:(UIViewController *)centerController {
     _elastic = YES;
     _allowRoation = YES;
-    _willAppearShouldArrangeViewsAfterRotation = (UIInterfaceOrientation)UIDeviceOrientationUnknown;
     _panningMode = IIViewDeckFullViewPanning;
     _panningCancelsTouchesInView = YES; // let's default to standard IOS behavior.
     _navigationControllerBehavior = IIViewDeckNavigationControllerContained;
@@ -383,7 +380,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         return CGRectMake(0, 0, currentBounds.size.height, currentBounds.size.width);
     } else {
         return [[UIScreen mainScreen] bounds];
-//        return self.referenceView ? self.referenceView.bounds : [[UIScreen mainScreen] bounds];
+        //        return self.referenceView ? self.referenceView.bounds : [[UIScreen mainScreen] bounds];
     }
 }
 
@@ -665,42 +662,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     [super viewDidUnload];
 }
 
-#pragma mark - View Containment
-
-
-- (BOOL)shouldAutomaticallyForwardRotationMethods {
-    return NO;
-}
-
-- (BOOL)shouldAutomaticallyForwardAppearanceMethods {
-    return NO;
-}
-
-- (BOOL)automaticallyForwardAppearanceAndRotationMethodsToChildViewControllers {
-    return NO;
-}
-
-- (BOOL)safe_shouldManageAppearanceMethods {
-    if ([[UIViewController class] instancesRespondToSelector:@selector(shouldAutomaticallyForwardAppearanceMethods)] ) { // on iOS6 or later
-        return ![self shouldAutomaticallyForwardAppearanceMethods];
-    }
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    return ![self automaticallyForwardAppearanceAndRotationMethodsToChildViewControllers];
-#pragma clang diagnostic pop
-}
-
-- (BOOL)safe_shouldForwardRotationMethods {
-    if ([[UIViewController class] instancesRespondToSelector:@selector(shouldAutomaticallyForwardRotationMethods)] ) { // on iOS6 or later
-        return ![self shouldAutomaticallyForwardRotationMethods];
-    }
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    return ![self automaticallyForwardAppearanceAndRotationMethodsToChildViewControllers];
-#pragma clang diagnostic pop
-}
-
-
 #pragma mark - Appearance
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -754,13 +715,8 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
             [self centerViewVisible];
         else
             [self centerViewHidden];
-    } else if (_willAppearShouldArrangeViewsAfterRotation != UIDeviceOrientationUnknown) {
-        [self willRotateToInterfaceOrientation:self.interfaceOrientation duration:0];
-        [self willAnimateRotationToInterfaceOrientation:self.interfaceOrientation duration:0];
-        [self didRotateFromInterfaceOrientation:_willAppearShouldArrangeViewsAfterRotation];
     }
     
-    if ([self safe_shouldManageAppearanceMethods]) [self.centerController viewWillAppear:animated];
     [self transitionAppearanceFrom:0 to:1 animated:animated];
     
     if (self.navigationControllerBehavior == IIViewDeckNavigationControllerIntegrated) {
@@ -776,7 +732,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     
-    if ([self safe_shouldManageAppearanceMethods]) [self.centerController viewDidAppear:animated];
     [self transitionAppearanceFrom:1 to:2 animated:animated];
     _viewAppeared = 2;
 }
@@ -784,7 +739,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     
-    if ([self safe_shouldManageAppearanceMethods]) [self.centerController viewWillDisappear:animated];
     [self transitionAppearanceFrom:2 to:1 animated:animated];
     _viewAppeared = 1;
 }
@@ -801,7 +755,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         //do nothing, obviously it wasn't attached because an exception was thrown
     }
     
-    if ([self safe_shouldManageAppearanceMethods]) [self.centerController viewDidDisappear:animated];
     [self transitionAppearanceFrom:1 to:0 animated:animated];
     _viewAppeared = 0;
 }
@@ -811,12 +764,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 - (BOOL)shouldAutorotate {
     _preRotationSize = self.referenceBounds.size;
     _preRotationCenterSize = self.centerView.bounds.size;
-    _willAppearShouldArrangeViewsAfterRotation = self.interfaceOrientation;
-    
-    // give other controllers a chance to act on it too
-    [self relayRotationMethod:^(UIViewController *controller) {
-        [controller shouldAutorotate];
-    }];
     
     return !self.centerController || [self.centerController shouldAutorotate];
 }
@@ -843,12 +790,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     
     _preRotationSize = self.referenceBounds.size;
     _preRotationCenterSize = self.centerView.bounds.size;
-    _willAppearShouldArrangeViewsAfterRotation = interfaceOrientation;
-    
-    // give other controllers a chance to act on it too
-    [self relayRotationMethod:^(UIViewController *controller) {
-        [controller shouldAutorotateToInterfaceOrientation:interfaceOrientation];
-    }];
     
     return !self.centerController || [self.centerController shouldAutorotateToInterfaceOrientation:interfaceOrientation];
 }
@@ -861,10 +802,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     }
     
     [self arrangeViewsAfterRotation];
-    
-    [self relayRotationMethod:^(UIViewController *controller) {
-        [controller willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
-    }];
     
     [self applyCenterViewCornerRadiusAnimated:YES];
     [self applyShadowToSlidingViewAnimated:YES];
@@ -899,9 +836,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
             [self setCenterController:center];
         }
     }];
-    [self relayRotationMethod:^(UIViewController *controller) {
-        [controller viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
-    }];
 }
 
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
@@ -921,10 +855,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         _preRotationReopenSide = [self openSide];
         [self closeSideView:_preRotationReopenSide animated:NO completion:nil];
     }
-    
-    [self relayRotationMethod:^(UIViewController *controller) {
-        [controller willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
-    }];
 }
 
 - (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation {
@@ -935,9 +865,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     }
     
     _rotating = NO;
-    [self relayRotationMethod:^(UIViewController *controller) {
-        [controller didRotateFromInterfaceOrientation:fromInterfaceOrientation];
-    }];
     if (_preRotationReopenSide != 0){
         [self openSideView:_preRotationReopenSide animated:NO completion:nil];
     }
@@ -945,7 +872,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
 }
 
 - (void)arrangeViewsAfterRotation {
-    _willAppearShouldArrangeViewsAfterRotation = (UIInterfaceOrientation)UIDeviceOrientationUnknown;
     if (_preRotationSize.width <= 0 || _preRotationSize.height <= 0) return;
     
     CGFloat offset, max, preSize;
@@ -1128,13 +1054,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     }
     
     _sideAppeared[viewDeckSide] = to;
-    
-    if ([self safe_shouldManageAppearanceMethods] && selector) {
-        UIViewController* controller = [self controllerForSide:viewDeckSide];
-        controller.view.tag = controller.view.tag; // access view property so that viewDidLoad is called before viewWillAppear is view is not loaded
-        BOOL (*objc_msgSendTyped)(id self, SEL _cmd, BOOL animated) = (void*)objc_msgSend;
-        objc_msgSendTyped(controller, selector, animated);
-    }
 }
 
 - (void)transitionAppearanceFrom:(int)from to:(int)to animated:(BOOL)animated {
@@ -1157,11 +1076,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
             return;
         else if (from > to && _sideAppeared[side] >= from)
             return;
-        
-        if ([self safe_shouldManageAppearanceMethods] && selector && controller) {
-            BOOL (*objc_msgSendTyped)(id self, SEL _cmd, BOOL animated) = (void*)objc_msgSend;
-            objc_msgSendTyped(controller, selector, animated);
-        }
     }];
 }
 
@@ -1682,18 +1596,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     
     if (completed) completed(self, YES);
     return YES;
-}
-
-
-#pragma mark - Pre iOS5 message relaying
-
-- (void)relayRotationMethod:(void(^)(UIViewController* controller))relay {
-    if ([self safe_shouldForwardRotationMethods]) {
-        relay(self.centerController);
-        [self doForControllers:^(UIViewController *controller, IIViewDeckSide side) {
-            relay(controller);
-        }];
-    }
 }
 
 #pragma mark - center view hidden stuff
@@ -2401,7 +2303,7 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
         if (controller == sideController)
             currentSide = side;
     }];
-    void(^beforeBlock)() = ^{};
+    void(^beforeBlock)(void) = ^{};
     void(^afterBlock)(UIViewController* controller) = ^(UIViewController* controller){};
     
     __block CGRect newFrame = self.referenceBounds;
@@ -2490,16 +2392,13 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
     __block CGRect currentFrame = self.referenceBounds;
     if (_viewFirstAppeared) {
         beforeBlock = ^(UIViewController* controller) {
-            if ([self safe_shouldManageAppearanceMethods]) [controller viewWillDisappear:NO];
             [self restoreShadowToSlidingView];
             [self removePanners];
             [controller.view removeFromSuperview];
-            if ([self safe_shouldManageAppearanceMethods]) [controller viewDidDisappear:NO];
             [self.centerView removeFromSuperview];
         };
         afterBlock = ^(UIViewController* controller) {
             [self.view addSubview:self.centerView];
-            if ([self safe_shouldManageAppearanceMethods]) [controller viewWillAppear:NO];
             UINavigationController* navController = [centerController isKindOfClass:[UINavigationController class]]
             ? (UINavigationController*)centerController
             : nil;
@@ -2520,7 +2419,6 @@ static NSTimeInterval durationToAnimate(CGFloat pointsToAnimate, CGFloat velocit
             
             [self addPanners];
             [self applyShadowToSlidingViewAnimated:NO];
-            if ([self safe_shouldManageAppearanceMethods]) [controller viewDidAppear:NO];
         };
     }
     

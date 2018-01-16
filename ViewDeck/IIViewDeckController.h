@@ -129,7 +129,6 @@ extern NSString* NSStringFromIIViewDeckSide(IIViewDeckSide side);
     CGFloat _offset, _maxLedge;
     CGSize _preRotationSize, _preRotationCenterSize;
     IIViewDeckSide _preRotationReopenSide;
-    UIInterfaceOrientation _willAppearShouldArrangeViewsAfterRotation;
     CGPoint _willAppearOffset;
     NSMutableArray* _finishTransitionBlocks;
     int _disabledUserInteractions;
